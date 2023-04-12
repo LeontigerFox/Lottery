@@ -8,9 +8,9 @@ dubbo:
     version: 1.0.0
   registry:
     #注册中心地址
-    address: zookeeper://127。0。0。1:2181
+    address: zookeeper://127.0.0.1:2181
     timeout: 30000
   protocol:
     name: dubbo
-    port: 20880
+    port: 20881
 

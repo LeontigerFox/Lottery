@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.banana69.lottery.infrastructure.dao.IStrategyDetailDao">
+
+    <resultMap id="strategyDetailMap" type="com.banana69.lottery.infrastructure.po.StrategyDetail">
+        <id column="id" property="id"/>
+        <result column="strategy_id" property="strategyId"/>
+        <result column="award_id" property="awardId"/>
+        <result column="award_name" property="awardName"/>
+        <result column="award_count" property="awardCount"/>
+        <result column="award_surplus_count" property="awardSurplusCount"/>
+        <result column="award_rate" property="awardRate"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <update id="deductStock" parameterType="com.banana69.lottery.infrastructure.po.StrategyDetail">
+        UPDATE strategy_detail SET award_surplus_count = award_surplus_count - 1
+        WHERE strategy_id = #{strategyId} AND award_id = #{awardId} AND award_surplus_count > 0
+    </update>
+
+
+
+    <select id="queryNoStockStrategyAwardList" parameterType="java.lang.Long" resultType="java.lang.String">
+        SELECT award_id AS awardId
+        FROM strategy_detail
+        WHERE strategy_id = #{strategyId} AND award_surplus_count = 0
+    </select>
+
+</mapper>

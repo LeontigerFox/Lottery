@@ -18,20 +18,14 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
-    <!--<insert id="inse" parameterType="com.banana69.lottery.infrastructure.po.Activity">-->
-    <!--    INSERT INTO activity-->
-    <!--    (activity_id, activity_name, activity_desc, begin_date_time, end_date_time,-->
-    <!--     stock_count, take_count, state, creator, create_time, update_time)-->
-    <!--    VALUES-->
-    <!--        (#{activityId}, #{activityName}, #{activityDesc}, #{beginDateTime}, #{endDateTime},-->
-    <!--         #{stockCount}, #{takeCount}, #{state}, #{creator}, now(), now())-->
-    <!--</insert>-->
+
 
     <select id="queryActivityById" parameterType="java.lang.Long" resultMap="activityMap">
         SELECT activity_id, activity_name, activity_desc, begin_date_time, end_date_time,
                stock_count, take_count, state, creator, create_time, update_time
         FROM activity
         WHERE activity_id = #{activityId}
+
     </select>
 
 </mapper>

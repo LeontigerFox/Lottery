@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
-@SpringBootTest
 @RunWith(SpringRunner.class)
+@SpringBootTest
 class ApiTest {
 
     private Logger logger = LoggerFactory.getLogger(ApiTest.class);
@@ -28,6 +28,7 @@ class ApiTest {
         ActivityReq req = new ActivityReq();
         req.setActivityId(100002L);
         ActivityRes result = activityBooth.queryActivityById(req);
+        System.out.println(result);
         logger.info("测试结果：{}", JSON.toJSONString(result));
     }
 

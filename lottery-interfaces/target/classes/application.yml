@@ -10,7 +10,8 @@ spring:
 
 mybatis-plus:
   mapper-locations: classpath:/mybatis/mapper/*.xml
-#  config-location:  classpath:/mybatis/config/mybatis-config.xml
+  configuration:
+    map-underscore-to-camel-case: true
 
 dubbo:
   application:
