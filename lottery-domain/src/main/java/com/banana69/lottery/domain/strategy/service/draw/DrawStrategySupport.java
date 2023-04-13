@@ -1,8 +1,8 @@
 package com.banana69.lottery.domain.strategy.service.draw;
 
 import com.banana69.lottery.domain.strategy.model.aggregates.StrategyRich;
+import com.banana69.lottery.domain.strategy.model.vo.AwardBriefVO;
 import com.banana69.lottery.domain.strategy.respository.IStrategyRepository;
-import com.banana69.lottery.infrastructure.po.Award;
 
 import javax.annotation.Resource;
 
@@ -19,6 +19,7 @@ public class DrawStrategySupport extends DrawConfig{
 
     /**
      * 查询策略配置信息
+     *
      * @param strategyId 策略ID
      * @return 策略配置信息
      */
@@ -28,10 +29,12 @@ public class DrawStrategySupport extends DrawConfig{
 
     /**
      * 查询奖品详情信息
-     * @param awardId
+     *
+     * @param awardId 奖品ID
      * @return 中奖详情
      */
-    protected Award queryAwardInfoByAwardId(String awardId){
+    protected AwardBriefVO queryAwardInfoByAwardId(String awardId){
         return strategyRepository.queryAwardInfo(awardId);
     }
+
 }

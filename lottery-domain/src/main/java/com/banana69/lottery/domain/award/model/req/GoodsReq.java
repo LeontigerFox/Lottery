@@ -41,6 +41,7 @@ public class GoodsReq {
 
     /** 扩展信息，用于一些个性商品发放所需要的透传字段内容 */
     private String extInfo;
+
     public GoodsReq(String uId, String orderId, String awardId, String awardName, String awardContent) {
         this.uId = uId;
         this.orderId = orderId;

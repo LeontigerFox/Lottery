@@ -7,8 +7,11 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 
 /**
- * @author banana69
- * 奖品明细
+ * Created with IntelliJ IDEA.
+
+ * @author: banana69
+ * @date: 2023/4/12/13:56
+ * @description:  奖品表
  */
 @Data
 @AllArgsConstructor
@@ -24,9 +27,6 @@ public class Award {
     /** 奖品类型（1:文字描述、2:兑换码、3:优惠券、4:实物奖品） */
     private Integer awardType;
 
-    ///** 奖品数量 */
-    //private Integer awardCount;
-
     /** 奖品名称 */
     private String awardName;
 
@@ -38,6 +38,7 @@ public class Award {
 
     /** 修改时间 */
     private Date updateTime;
+
 
 
 }

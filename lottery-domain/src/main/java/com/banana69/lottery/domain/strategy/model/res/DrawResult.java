@@ -8,7 +8,11 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
 /**
- * @author banana69
+ * Created with IntelliJ IDEA.
+
+ * @author: banana69
+ * @date: 2023/4/12/13:36
+ * @description: 抽奖结果
  */
 @Data
 @NoArgsConstructor
@@ -34,6 +38,7 @@ public class DrawResult {
      * 中奖奖品信息
      */
     private DrawAwardInfo drawAwardInfo;
+
 
     public DrawResult(String uId, Long strategyId, Integer drawState) {
         this.uId = uId;

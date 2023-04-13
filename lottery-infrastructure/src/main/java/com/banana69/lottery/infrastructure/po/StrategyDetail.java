@@ -7,8 +7,11 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 /**
- * 策略明细
- * @author banana69
+ * Created with IntelliJ IDEA.
+
+ * @author: banana69
+ * @date: 2023/4/12/13:57
+ * @description: 策略明细
  */
 @Data
 @NoArgsConstructor
@@ -59,5 +62,6 @@ public class StrategyDetail {
      * 修改时间
      */
     private String updateTime;
+
 
 }

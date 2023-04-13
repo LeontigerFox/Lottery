@@ -18,4 +18,20 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <insert id="insertList" parameterType="java.util.List">
+        INSERT INTO award(award_id, award_type, award_name, award_content, create_time, update_time)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.awardId},
+            #{item.awardType},
+            #{item.awardName},
+            #{item.awardContent},
+            NOW(),
+            NOW()
+            )
+        </foreach>
+    </insert>
+
+
 </mapper>

@@ -1338,3 +1338,375 @@ public class DistributionGoodsFactory extends GoodsConfig {
 - 活动领域层需要提供的功能包括：活动创建、活动状态处理和用户领取活动操作，本章节先实现前两个需求，下个章节继续开发其他功能。
 - 活动创建的操作主要会用到事务，因为活动系统提供给运营后台创建活动时，需要包括：活动信息、奖品信息、策略信息、策略明细以及其他额外扩展的内容，这些信息都需要在一个事务下进行落库。
 - 活动状态的审核，【1编辑、2提审、3撤审、4通过、5运行(审核通过后worker扫描状态)、6拒绝、7关闭、8开启】，这里我们会用到设计模式中的`状态模式`进行处理。
+
+
+
+### 8.2 活动创建
+
+**com.banana69.lottery.domain.activity.service.deploy.impl.ActivityDeployImpl**
+
+```java
+public class ActivityDeployImpl implements IActivityDeploy {
+
+    private Logger logger = LoggerFactory.getLogger(ActivityDeployImpl.class);
+
+    @Resource
+    private IActivityRepository activityRepository;
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void createActivity(ActivityConfigReq req) {
+        logger.info("创建活动配置开始，activityId：{}", req.getActivityId());
+        ActivityConfigRich activityConfigRich = req.getActivityConfigRich();
+        try {
+            // 添加活动配置
+            ActivityVO activity = activityConfigRich.getActivity();
+            activityRepository.addActivity(activity);
+
+            // 添加奖品配置
+            List<AwardVO> awardList = activityConfigRich.getAwardList();
+            activityRepository.addAward(awardList);
+
+            // 添加策略配置
+            StrategyVO strategy = activityConfigRich.getStrategy();
+            activityRepository.addStrategy(strategy);
+
+            // 添加策略明细配置
+            List<StrategyDetailVO> strategyDetailList = activityConfigRich.getStrategy().getStrategyDetailList();
+            activityRepository.addStrategyDetailList(strategyDetailList);
+
+            logger.info("创建活动配置完成，activityId：{}", req.getActivityId());
+        } catch (DuplicateKeyException e) {
+            logger.error("创建活动配置失败，唯一索引冲突 activityId：{} reqJson：{}", req.getActivityId(), JSON.toJSONString(req), e);
+            throw e;
+        }
+    }
+
+    @Override
+    public void updateActivity(ActivityConfigReq req) {
+        // TODO: 非核心功能后续补充
+    }
+}
+```
+
+活动的创建操作主要包括：添加活动配置、添加奖品配置、添加策略配置、添加策略明细配置，这些都是在同一个注解事务配置下进行处理 `@Transactional(rollbackFor = Exception.class)`
+
+这里需要注意一点，奖品配置和策略配置都是集合形式的，这里使用了 Mybatis 的一次插入多条数据配置。*如果之前没用过，可以注意下使用方式*
+
+
+
+### 8.3 状态模式变更
+
+状态模式：类的行为是基于它的状态改变的，这种类型的设计模式属于行为型模式。它描述的是一个行为下的多种状态变更，比如我们最常见的一个网站的页面，在你登录与不登录下展示的内容是略有差异的(不登录不能展示个人信息)，而这种登录与不登录就是我们通过改变状态，而让整个行为发生了变化。
+
+<img src="README.assets/image-20230413132358735.png" alt="image-20230413132358735" style="zoom:50%;" />
+
+在上图中也可以看到我们的流程节点中包括了各个状态到下一个状态扭转的关联条件，比如；审核通过才能到活动中，而不能从编辑中直接到活动中，而这些状态的转变就是我们要完成的场景处理。
+
+大部分程序员基本都开发过类似的业务场景，需要对活动或者一些配置需要审核后才能对外发布，而这个审核的过程往往会随着系统的重要程度而设立多级控制，来保证一个活动可以安全上线，避免造成误操作引起资损。
+
+#### 8.3.1 工程结构
+
+<img src="README.assets/image-20230413132912483.png" alt="image-20230413132912483" style="zoom:30%;" />
+
+- activity 活动领域层包括：deploy、partake、stateflow
+- stateflow 状态流转运用的状态模式，主要包括抽象出状态抽象类AbstractState 和对应的 event 包下的状态处理，最终使用 StateHandlerImpl 来提供对外的接口服务。
+
+
+
+#### 8.3.2 定义抽象类
+
+```java
+public abstract class AbstractState {
+
+    @Resource
+    protected IActivityRepository activityRepository;
+
+    /**
+     * 活动提审
+     *
+     * @param activityId   活动ID
+     * @param currentState 当前状态
+     * @return 执行结果
+     */
+    public abstract Result arraignment(Long activityId, Enum<Constants.ActivityState> currentState);
+
+    /**
+     * 审核通过
+     *
+     * @param activityId   活动ID
+     * @param currentState 当前状态
+     * @return 执行结果
+     */
+    public abstract Result checkPass(Long activityId, Enum<Constants.ActivityState> currentState);
+
+    /**
+     * 审核拒绝
+     *
+     * @param activityId   活动ID
+     * @param currentState 当前状态
+     * @return 执行结果
+     */
+    public abstract Result checkRefuse(Long activityId, Enum<Constants.ActivityState> currentState);
+
+    /**
+     * 撤审撤销
+     *
+     * @param activityId   活动ID
+     * @param currentState 当前状态
+     * @return 执行结果
+     */
+    public abstract Result checkRevoke(Long activityId, Enum<Constants.ActivityState> currentState);
+
+    /**
+     * 活动关闭
+     *
+     * @param activityId   活动ID
+     * @param currentState 当前状态
+     * @return 执行结果
+     */
+    public abstract Result close(Long activityId, Enum<Constants.ActivityState> currentState);
+
+    /**
+     * 活动开启
+     *
+     * @param activityId   活动ID
+     * @param currentState 当前状态
+     * @return 执行结果
+     */
+    public abstract Result open(Long activityId, Enum<Constants.ActivityState> currentState);
+
+    /**
+     * 活动执行
+     *
+     * @param activityId   活动ID
+     * @param currentState 当前状态
+     * @return 执行结果
+     */
+    public abstract Result doing(Long activityId, Enum<Constants.ActivityState> currentState);
+
+}
+```
+
+在整个接口中提供了各项状态流转服务的接口，例如；活动提审、审核通过、审核拒绝、撤审撤销等7个方法。
+
+在这些方法中所有的入参都是一样的，activityId(活动ID)、currentStatus(当前状态)，只有他们的具体实现是不同的。
+
+
+
+#### 8.3.3 提审状体
+
+```java
+@Component
+public class ArraignmentState extends AbstractState {
+
+    @Override
+    public Result arraignment(Long activityId, Enum<Constants.ActivityState> currentState) {
+        return Result.buildResult(Constants.ResponseCode.UN_ERROR, "待审核状态不可重复提审");
+    }
+
+    @Override
+    public Result checkPass(Long activityId, Enum<Constants.ActivityState> currentState) {
+        boolean isSuccess = activityRepository.alterStatus(activityId, currentState, Constants.ActivityState.PASS);
+        return isSuccess ? Result.buildResult(Constants.ResponseCode.SUCCESS, "活动审核通过完成") : Result.buildErrorResult("活动状态变更失败");
+    }
+
+    @Override
+    public Result checkRefuse(Long activityId, Enum<Constants.ActivityState> currentState) {
+        boolean isSuccess = activityRepository.alterStatus(activityId, currentState, Constants.ActivityState.REFUSE);
+        return isSuccess ? Result.buildResult(Constants.ResponseCode.SUCCESS, "活动审核拒绝完成") : Result.buildErrorResult("活动状态变更失败");
+    }
+
+    @Override
+    public Result checkRevoke(Long activityId, Enum<Constants.ActivityState> currentState) {
+        boolean isSuccess = activityRepository.alterStatus(activityId, currentState, Constants.ActivityState.EDIT);
+        return isSuccess ? Result.buildResult(Constants.ResponseCode.SUCCESS, "活动审核撤销回到编辑中") : Result.buildErrorResult("活动状态变更失败");
+    }
+
+    @Override
+    public Result close(Long activityId, Enum<Constants.ActivityState> currentState) {
+        boolean isSuccess = activityRepository.alterStatus(activityId, currentState, Constants.ActivityState.CLOSE);
+        return isSuccess ? Result.buildResult(Constants.ResponseCode.SUCCESS, "活动审核关闭完成") : Result.buildErrorResult("活动状态变更失败");
+    }
+
+    @Override
+    public Result open(Long activityId, Enum<Constants.ActivityState> currentState) {
+        return Result.buildResult(Constants.ResponseCode.UN_ERROR, "非关闭活动不可开启");
+    }
+
+    @Override
+    public Result doing(Long activityId, Enum<Constants.ActivityState> currentState) {
+        return Result.buildResult(Constants.ResponseCode.UN_ERROR, "待审核活动不可执行活动中变更");
+    }
+
+}
+```
+
+ArraignmentState 提审状态中的流程，比如：待审核状态不可重复提审、非关闭活动不可开启、待审核活动不可执行活动中变更，而：`审核通过、审核拒绝、撤销审核、活动关闭，都可以操作`。
+
+通过这样的设计模式结构，优化掉原本需要在各个流程节点中的转换使用 ifelse 的场景，这样操作以后也可以更加方便你进行扩展。*当然其实这里还可以使用如工作流的方式进行处理*
+
+
+
+#### 8.3.4 状态流转配置抽象类
+
+```java
+public class StateConfig {
+
+    @Resource
+    private ArraignmentState arraignmentState;
+    @Resource
+    private CloseState closeState;
+    @Resource
+    private DoingState doingState;
+    @Resource
+    private EditingState editingState;
+    @Resource
+    private OpenState openState;
+    @Resource
+    private PassState passState;
+    @Resource
+    private RefuseState refuseState;
+
+    protected Map<Enum<Constants.ActivityState>, AbstractState> stateGroup = new ConcurrentHashMap<>();
+
+    @PostConstruct
+    public void init() {
+        stateGroup.put(Constants.ActivityState.ARRAIGNMENT, arraignmentState);
+        stateGroup.put(Constants.ActivityState.CLOSE, closeState);
+        stateGroup.put(Constants.ActivityState.DOING, doingState);
+        stateGroup.put(Constants.ActivityState.EDIT, editingState);
+        stateGroup.put(Constants.ActivityState.OPEN, openState);
+        stateGroup.put(Constants.ActivityState.PASS, passState);
+        stateGroup.put(Constants.ActivityState.REFUSE, refuseState);
+    }
+
+}
+```
+
+在状态流转配置中，定义好各个流转操作
+
+#### 8.3.5 实现状态处理服务
+
+```java
+@Service
+public class StateHandlerImpl extends StateConfig implements IStateHandler {
+
+    @Override
+    public Result arraignment(Long activityId, Enum<Constants.ActivityState> currentStatus) {
+        return stateGroup.get(currentStatus).arraignment(activityId, currentStatus);
+    }
+
+    @Override
+    public Result checkPass(Long activityId, Enum<Constants.ActivityState> currentStatus) {
+        return stateGroup.get(currentStatus).checkPass(activityId, currentStatus);
+    }
+
+    @Override
+    public Result checkRefuse(Long activityId, Enum<Constants.ActivityState> currentStatus) {
+        return stateGroup.get(currentStatus).checkRefuse(activityId, currentStatus);
+    }
+
+    @Override
+    public Result checkRevoke(Long activityId, Enum<Constants.ActivityState> currentStatus) {
+        return stateGroup.get(currentStatus).checkRevoke(activityId, currentStatus);
+    }
+
+    @Override
+    public Result close(Long activityId, Enum<Constants.ActivityState> currentStatus) {
+        return stateGroup.get(currentStatus).close(activityId, currentStatus);
+    }
+
+    @Override
+    public Result open(Long activityId, Enum<Constants.ActivityState> currentStatus) {
+        return stateGroup.get(currentStatus).open(activityId, currentStatus);
+    }
+
+    @Override
+    public Result doing(Long activityId, Enum<Constants.ActivityState> currentStatus) {
+        return stateGroup.get(currentStatus).doing(activityId, currentStatus);
+    }
+
+}
+```
+
+- 在状态流转服务中，通过在 `状态组 stateGroup` 获取对应的状态处理服务和操作变更状态。
+
+
+
+### 8.4 测试活动创建
+
+```java
+@Before
+public void init() {
+    ActivityVO activity = new ActivityVO();
+    activity.setActivityId(activityId);
+    activity.setActivityName("测试活动");
+    activity.setActivityDesc("测试活动描述");
+    activity.setBeginDateTime(new Date());
+    activity.setEndDateTime(new Date());
+    activity.setStockCount(100);
+    activity.setTakeCount(10);
+    activity.setState(Constants.ActivityState.EDIT.getCode());
+    activity.setCreator("xiaofuge");
+
+    StrategyVO strategy = new StrategyVO();
+    strategy.setStrategyId(10002L);
+    strategy.setStrategyDesc("抽奖策略");
+    strategy.setStrategyMode(Constants.StrategyMode.SINGLE.getCode());
+    strategy.setGrantType(1);
+    strategy.setGrantDate(new Date());
+    strategy.setExtInfo("");
+
+    StrategyDetailVO strategyDetail_01 = new StrategyDetailVO();
+    strategyDetail_01.setStrategyId(strategy.getStrategyId());
+    strategyDetail_01.setAwardId("101");
+    strategyDetail_01.setAwardName("一等奖");
+    strategyDetail_01.setAwardCount(10);
+    strategyDetail_01.setAwardSurplusCount(10);
+    strategyDetail_01.setAwardRate(new BigDecimal("0.05"));
+
+    StrategyDetailVO strategyDetail_02 = new StrategyDetailVO();
+    strategyDetail_02.setStrategyId(strategy.getStrategyId());
+    strategyDetail_02.setAwardId("102");
+    strategyDetail_02.setAwardName("二等奖");
+    strategyDetail_02.setAwardCount(20);
+    strategyDetail_02.setAwardSurplusCount(20);
+    strategyDetail_02.setAwardRate(new BigDecimal("0.15"));
+    
+    // ...
+
+}
+
+
+@Test
+public void test_createActivity() {
+    activityDeploy.createActivity(new ActivityConfigReq(activityId, activityConfigRich));
+}
+```
+
+![image-20230413133312925](README.assets/image-20230413133312925.png)
+
+
+
+### 8.5 测试状态流转
+
+```java
+@Test
+public void test_alterState() {
+    logger.info("提交审核，测试：{}", JSON.toJSONString(stateHandler.arraignment(100001L, Constants.ActivityState.EDIT)));
+    logger.info("审核通过，测试：{}", JSON.toJSONString(stateHandler.checkPass(100001L, Constants.ActivityState.ARRAIGNMENT)));
+    logger.info("运行活动，测试：{}", JSON.toJSONString(stateHandler.doing(100001L, Constants.ActivityState.PASS)));
+    logger.info("二次提审，测试：{}", JSON.toJSONString(stateHandler.checkPass(100001L, Constants.ActivityState.EDIT)));
+}
+```
+
+测试验证之前先观察你的活动数据状态，因为后续会不断的变更这个状态，以及变更失败提醒。
+
+![image-20230413133530981](README.assets/image-20230413133530981.png)
+
+从测试结果可以看到，处于不同状态下的状态操作动作和反馈结果。
+
+1. **注意 domain、lottery-infrastructure，包结构调整，涉及到 POM 配置文件的修改，在 lottery-infrastructure 引入 domain 的 POM 配置**
+2. **Activity 活动领域目前只开发了一部分内容，需要注意如何考虑把活动一个类思考🤔出部署活动、领取活动和状态流转的设计实现**
+3. **目前我们看到的活动创建还没有一个活动号的设计，下个章节我们会涉及到活动ID策略生成以及领取活动的单号ID生成。**

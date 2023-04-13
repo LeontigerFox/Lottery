@@ -5,6 +5,7 @@
     <file url="file://$PROJECT_DIR$/lottery-application/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lottery-common/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lottery-domain/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/lottery-domain/src/main/java/com/banana69/lottery/domain/strategy/model/vo/AwardBriefVO.java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lottery-infrastructure/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lottery-interfaces/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lottery-rpc/src/main/java" charset="UTF-8" />

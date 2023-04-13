@@ -26,46 +26,40 @@
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
-<!--            <version>3.0.0</version>-->
-        </dependency>
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
-<!--            <version>3.4.3</version>-->
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-<!--            <version>8.0.31</version>-->
         </dependency>
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
-<!--            <version>1.2.58</version>-->
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-<!--            <version>3.8</version>-->
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-<!--            <version>4.12</version>-->
             <scope>test</scope>
         </dependency>
-
-
         <dependency>
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo</artifactId>
-            <version>2.7.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo-spring-boot-starter</artifactId>
-            <version>2.7.1</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
+        </dependency>
+
+
+
         <!-- 引入zookeeper -->
         <dependency>
             <groupId>org.apache.curator</groupId>
@@ -90,6 +84,7 @@
             </exclusions>
         </dependency>
 
+        <!--业务包-->
         <dependency>
             <groupId>com.banana69.lottery</groupId>
             <artifactId>lottery-infrastructure</artifactId>

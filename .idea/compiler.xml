@@ -2,6 +2,7 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
       <profile name="Maven default annotation processors profile" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -9,12 +10,14 @@
         <module name="lottery-infrastructure" />
         <module name="lottery-common" />
         <module name="lottery-domain" />
-        <module name="lottery-Test" />
         <module name="lottery-application" />
         <module name="lottery-rpc" />
         <module name="lottery-interfaces" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="lottery-Test" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">

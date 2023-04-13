@@ -5,19 +5,5 @@
 
 <mapper namespace="com.banana69.lottery.infrastructure.dao.IStrategyDao">
 
-    <!--<resultMap id="strategyMap" type="com.banana69.lottery.infrastructure.po.Strategy">-->
-    <!--    <id column="id" property="id"/>-->
-    <!--    <result column="strategy_id" property="strategyId"/>-->
-    <!--    <result column="strategy_desc" property="strategyDesc"/>-->
-    <!--    <result column="strategy_mode" property="strategyMode"/>-->
-    <!--    <result column="grant_type" property="grantType"/>-->
-    <!--    <result column="grant_date" property="grantDate"/>-->
-    <!--    <result column="ext_info" property="extInfo"/>-->
-    <!--    <result column="create_time" property="createTime"/>-->
-    <!--    <result column="update_time" property="updateTime"/>-->
-    <!--</resultMap>-->
-
-
-
 
 </mapper>

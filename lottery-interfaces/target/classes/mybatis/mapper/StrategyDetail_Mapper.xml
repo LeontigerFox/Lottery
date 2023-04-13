@@ -17,6 +17,24 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
+    <insert id="insertList" parameterType="java.util.List">
+        INSERT INTO strategy_detail(strategy_id, award_id, award_name, award_count, award_surplus_count,
+        award_rate, create_time, update_time)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+                #{item.strategyId},
+                #{item.awardId},
+                #{item.awardName},
+                #{item.awardCount},
+                #{item.awardSurplusCount},
+                #{item.awardRate},
+                NOW(),
+                NOW()
+            )
+        </foreach>
+    </insert>
+
     <update id="deductStock" parameterType="com.banana69.lottery.infrastructure.po.StrategyDetail">
         UPDATE strategy_detail SET award_surplus_count = award_surplus_count - 1
         WHERE strategy_id = #{strategyId} AND award_id = #{awardId} AND award_surplus_count > 0

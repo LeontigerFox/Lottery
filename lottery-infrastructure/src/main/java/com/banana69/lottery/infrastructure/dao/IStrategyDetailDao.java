@@ -4,7 +4,6 @@ import com.banana69.lottery.infrastructure.po.StrategyDetail;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
-import javax.annotation.Resource;
 import java.util.List;
 
 /**
@@ -27,4 +26,5 @@ public interface IStrategyDetailDao extends BaseMapper<StrategyDetail> {
      */
     int deductStock(StrategyDetail strategyDetailReq);
 
+    void insertList(List<StrategyDetail> req);
 }

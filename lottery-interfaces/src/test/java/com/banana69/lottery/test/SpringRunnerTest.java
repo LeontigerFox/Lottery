@@ -22,7 +22,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import javax.annotation.Resource;
 import java.util.Date;
-import java.util.concurrent.ThreadPoolExecutor;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -38,6 +37,7 @@ public class SpringRunnerTest {
 
     @Resource
     private DistributionGoodsFactory distributionGoodsFactory;
+
 
 
     @Test
@@ -70,7 +70,7 @@ public class SpringRunnerTest {
 
         // 判断抽奖结果
         Integer drawState = drawResult.getDrawState();
-        if(Constants.DrawState.FAIL.getCode().equals(drawState)){
+        if (Constants.DrawState.FAIL.getCode().equals(drawState)) {
             logger.info("未中奖 DrawAwardInfo is null");
             return;
         }
@@ -81,9 +81,10 @@ public class SpringRunnerTest {
 
         // 根据 awardType 从抽奖工厂中获取对应的发奖服务
         IDistributionGoods distributionGoodsService = distributionGoodsFactory.getDistributionGoodsService(drawAwardInfo.getAwardType());
-        DistributionRes  distributionRes = distributionGoodsService.doDistribution(goodsReq);
+        DistributionRes distributionRes = distributionGoodsService.doDistribution(goodsReq);
 
-        logger.info("测试结果： {}",JSON.toJSONString(distributionRes));
+        logger.info("测试结果：{}", JSON.toJSONString(distributionRes));
+
     }
 
     @Test
