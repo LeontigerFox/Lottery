@@ -25,14 +25,7 @@ public class AlterStateVO {
     /** 更新后状态 */
     private Integer afterState;
 
-    @Override
-    public String toString() {
-        return "AlterStateVO{" +
-                "activityId=" + activityId +
-                ", beforeState=" + beforeState +
-                ", afterState=" + afterState +
-                '}';
-    }
+
 
 
 }

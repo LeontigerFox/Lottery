@@ -13,4 +13,5 @@ public interface IActivityDao extends BaseMapper<Activity> {
 
     Activity queryActivityById(@Param("activityId") Long activityId);
 
+    int subtractionActivityStock(Long activityId);
 }

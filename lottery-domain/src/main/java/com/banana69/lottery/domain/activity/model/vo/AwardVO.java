@@ -28,15 +28,7 @@ public class AwardVO {
     /** 奖品内容「描述、奖品码、sku」 */
     private String awardContent;
 
-    @Override
-    public String toString() {
-        return "AwardVO{" +
-                "awardId='" + awardId + '\'' +
-                ", awardType=" + awardType +
-                ", awardName='" + awardName + '\'' +
-                ", awardContent='" + awardContent + '\'' +
-                '}';
-    }
+
 
 
 }

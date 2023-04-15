@@ -103,11 +103,11 @@ public class DataSourceAutoConfig implements EnvironmentAware {
     public TransactionTemplate transactionTemplate(DataSource dataSource) {
         DataSourceTransactionManager dataSourceTransactionManager = new DataSourceTransactionManager();
         dataSourceTransactionManager.setDataSource(dataSource);
-
         TransactionTemplate transactionTemplate = new TransactionTemplate();
         transactionTemplate.setTransactionManager(dataSourceTransactionManager);
         transactionTemplate.setPropagationBehaviorName("PROPAGATION_REQUIRED");
         return transactionTemplate;
+
     }
 
     @Override

@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Date;
 
 /**
  * Created with IntelliJ IDEA.
@@ -21,7 +22,7 @@ public class StrategyDetail {
     /**
      * 自增ID
      */
-    private String id;
+    private Long id;
 
     /**
      * 策略ID
@@ -56,12 +57,13 @@ public class StrategyDetail {
     /**
      * 创建时间
      */
-    private String createTime;
+    private Date createTime;
 
     /**
      * 修改时间
      */
-    private String updateTime;
+    private Date updateTime;
+
 
 
 }

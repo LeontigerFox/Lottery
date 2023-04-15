@@ -48,17 +48,7 @@ public class StrategyDetailVO {
      */
     private BigDecimal awardRate;
 
-    @Override
-    public String toString() {
-        return "StrategyDetailVO{" +
-                "strategyId=" + strategyId +
-                ", awardId='" + awardId + '\'' +
-                ", awardName='" + awardName + '\'' +
-                ", awardCount=" + awardCount +
-                ", awardSurplusCount=" + awardSurplusCount +
-                ", awardRate=" + awardRate +
-                '}';
-    }
+
 
 
 }

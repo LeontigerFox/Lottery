@@ -1,6 +1,7 @@
 package com.banana69.lottery.infrastructure.dao;
 
 import cn.bugstack.middleware.db.router.annotation.DBRouter;
+import com.banana69.lottery.infrastructure.po.UserStrategyExport;
 import com.banana69.lottery.infrastructure.po.UserTakeActivity;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
@@ -13,7 +14,7 @@ import org.apache.ibatis.annotations.Mapper;
  * @description:
  */
 @Mapper
-public interface IUserTakeActivityDao  {
+public interface IUserTakeActivityDao extends BaseMapper<UserTakeActivity> {
 
     /**
      * 插入用户领取活动信息

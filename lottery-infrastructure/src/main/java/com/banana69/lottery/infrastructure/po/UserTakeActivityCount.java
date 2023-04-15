@@ -10,45 +10,42 @@ import java.util.Date;
  * Created with IntelliJ IDEA.
  *
  * @author: banana69
- * @date: 2023/04/14/11:27
- * @description: 用户领取活动表
+ * @date: 2023/04/15/18:12
+ * @description: 用户活动参与次数表
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserTakeActivity {
+public class UserTakeActivityCount {
     /**
      * 自增ID
      */
     private Long id;
+
+    public String getuId() {
+        return uId;
+    }
+
+    public void setuId(String uId) {
+        this.uId = uId;
+    }
+
     /**
      * 用户ID
      */
     private String uId;
     /**
-     * 活动领取ID
-     */
-    private Long takeId;
-    /**
      * 活动ID
      */
     private Long activityId;
     /**
-     * 活动名称
+     * 可领取次数
      */
-    private String activityName;
+    private Integer totalCount;
     /**
-     * 活动领取时间
+     * 已领取次数
      */
-    private Date takeDate;
-    /**
-     * 领取次数
-     */
-    private Integer takeCount;
-    /**
-     * 防重ID
-     */
-    private String uuid;
+    private Integer leftCount;
     /**
      * 创建时间
      */
@@ -58,12 +55,4 @@ public class UserTakeActivity {
      */
     private Date updateTime;
 
-
-    public void setuId(String uId) {
-        this.uId = uId;
-    }
-
-    public String getuId() {
-        return uId;
-    }
 }

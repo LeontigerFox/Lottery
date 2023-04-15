@@ -16,8 +16,10 @@ import java.util.Date;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserStrategyExport {/** 自增ID */
-private Long id;
+public class UserStrategyExport {
+
+    /** 自增ID */
+    private Long id;
     /** 用户ID */
     private String uId;
     /** 活动ID */
@@ -48,6 +50,7 @@ private Long id;
     private Date createTime;
     /** 更新时间 */
     private Date updateTime;
+
 
     public String getuId() {
         return uId;

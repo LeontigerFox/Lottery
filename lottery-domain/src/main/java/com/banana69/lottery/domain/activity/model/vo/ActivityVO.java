@@ -62,20 +62,8 @@ public class ActivityVO {
      */
     private String creator;
 
-    @Override
-    public String toString() {
-        return "ActivityVO{" +
-                "activityId=" + activityId +
-                ", activityName='" + activityName + '\'' +
-                ", activityDesc='" + activityDesc + '\'' +
-                ", beginDateTime=" + beginDateTime +
-                ", endDateTime=" + endDateTime +
-                ", stockCount=" + stockCount +
-                ", takeCount=" + takeCount +
-                ", state=" + state +
-                ", creator='" + creator + '\'' +
-                '}';
-    }
+
+
 
 
 }

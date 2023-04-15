@@ -1,19 +1,6 @@
-/*
- Navicat Premium Data Transfer
+create database lottery;
 
- Source Server         : 127.0.0.1
- Source Server Type    : MySQL
- Source Server Version : 50639
- Source Host           : localhost:3306
- Source Schema         : lottery
-
- Target Server Type    : MySQL
- Target Server Version : 50639
- File Encoding         : 65001
-
- Date: 04/09/2021 16:24:34
-*/
-
+USE lottery;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -29,7 +16,9 @@ CREATE TABLE `activity` (
                             `begin_date_time` datetime DEFAULT NULL COMMENT '开始时间',
                             `end_date_time` datetime DEFAULT NULL COMMENT '结束时间',
                             `stock_count` int(11) DEFAULT NULL COMMENT '库存',
+                            `stock_surplus_count` int(11) DEFAULT NULL COMMENT '库存剩余',
                             `take_count` int(11) DEFAULT NULL COMMENT '每人可参与次数',
+                            `strategy_id` bigint(11) DEFAULT NULL COMMENT '抽奖策略ID',
                             `state` tinyint(2) DEFAULT NULL COMMENT '活动状态：1编辑、2提审、3撤审、4通过、5运行(审核通过后worker扫描状态)、6拒绝、7关闭、8开启',
                             `creator` varchar(64) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '创建人',
                             `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -42,7 +31,7 @@ CREATE TABLE `activity` (
 -- Records of activity
 -- ----------------------------
 BEGIN;
-INSERT INTO `activity` VALUES (1, 100001, '活动名', '测试活动', '2021-08-08 20:14:50', '2021-08-08 20:14:50', 100, 10, 0, 'xiaofuge', '2021-08-08 20:14:50', '2021-08-08 20:14:50');
+INSERT INTO `activity` VALUES (1, 100001, '活动名', '测试活动', '2021-10-01 00:00:00', '2021-10-30 23:59:59', 100, 98, 10, 10001, 5, 'xiaofuge', '2021-08-08 20:14:50', '2021-08-08 20:14:50');
 COMMIT;
 
 -- ----------------------------
@@ -57,7 +46,8 @@ CREATE TABLE `award` (
                          `award_content` varchar(128) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '奖品内容「文字描述、Key、码」',
                          `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                          `update_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-                         PRIMARY KEY (`id`)
+                         PRIMARY KEY (`id`),
+                         UNIQUE KEY `idx_award_id` (`award_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='奖品配置';
 
 -- ----------------------------
@@ -93,7 +83,7 @@ CREATE TABLE `strategy` (
 -- Records of strategy
 -- ----------------------------
 BEGIN;
-INSERT INTO `strategy` VALUES (1, 10001, 'test', 1, 1, NULL, '', '2021-09-04 15:37:52', '2021-09-04 15:37:52');
+INSERT INTO `strategy` VALUES (1, 10001, 'test', 2, 1, NULL, '', '2021-09-25 08:15:52', '2021-09-25 08:15:52');
 COMMIT;
 
 -- ----------------------------
@@ -120,8 +110,9 @@ BEGIN;
 INSERT INTO `strategy_detail` VALUES (1, 10001, '1', 'IMac', 10, 0, 0.05, '2021-08-15 15:38:05', '2021-08-15 15:38:05');
 INSERT INTO `strategy_detail` VALUES (2, 10001, '2', 'iphone', 20, 20, 0.15, '2021-08-15 15:38:05', '2021-08-15 15:38:05');
 INSERT INTO `strategy_detail` VALUES (3, 10001, '3', 'ipad', 50, 50, 0.20, '2021-08-15 15:38:05', '2021-08-15 15:38:05');
-INSERT INTO `strategy_detail` VALUES (4, 10001, '4', 'AirPods', 100, 81, 0.25, '2021-08-15 15:38:05', '2021-08-15 15:38:05');
-INSERT INTO `strategy_detail` VALUES (5, 10001, '5', 'Book', 500, 391, 0.35, '2021-08-15 15:38:05', '2021-08-15 15:38:05');
+INSERT INTO `strategy_detail` VALUES (4, 10001, '4', 'AirPods', 100, 79, 0.25, '2021-08-15 15:38:05', '2021-08-15 15:38:05');
+INSERT INTO `strategy_detail` VALUES (5, 10001, '5', 'Book', 500, 390, 0.35, '2021-08-15 15:38:05', '2021-08-15 15:38:05');
 COMMIT;
 
 SET FOREIGN_KEY_CHECKS = 1;
+

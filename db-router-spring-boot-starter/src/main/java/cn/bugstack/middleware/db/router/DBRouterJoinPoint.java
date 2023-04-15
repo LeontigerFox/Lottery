@@ -54,35 +54,20 @@ public class DBRouterJoinPoint {
     @Around("aopPoint() && @annotation(dbRouter)")
     public Object doRouter(ProceedingJoinPoint jp, DBRouter dbRouter) throws Throwable {
         String dbKey = dbRouter.key();
-        if (StringUtils.isBlank(dbKey)) {
+        if(StringUtils.isBlank(dbKey) && StringUtils.isBlank(dbRouterConfig.getRouterKey())){
             throw new RuntimeException("annotation DBRouter key is null！");
         }
-
-        // 计算路由
+        dbKey = StringUtils.isNotBlank(dbKey) ? dbKey : dbRouterConfig.getRouterKey();
+        // 路由属性
         String dbKeyAttr = getAttrValue(dbKey, jp.getArgs());
-        int size = dbRouterConfig.getDbCount() * dbRouterConfig.getTbCount();
-
-        // 扰动函数
-        int idx = (size - 1) & (dbKeyAttr.hashCode() ^ (dbKeyAttr.hashCode() >>> 16));
-
-        // 库表索引
-        int dbIdx = idx / dbRouterConfig.getTbCount() + 1;
-        int tbIdx = idx - dbRouterConfig.getTbCount() * (dbIdx - 1);
-
-        // 设置到 ThreadLocal
-        DBContextHolder.setDBKey(String.format("%02d", dbIdx));
-        DBContextHolder.setTBKey(String.format("%03d", tbIdx));
-        logger.info("数据库路由 method：{} dbIdx：{} tbIdx：{}", getMethod(jp).getName(), dbIdx, tbIdx);
-
+        // 路由策略
+        dbRouterStrategy.doRouter(dbKeyAttr);
         // 返回结果
         try {
             return jp.proceed();
         } finally {
-            DBContextHolder.clearDBKey();
-            DBContextHolder.clearTBKey();
+            dbRouterStrategy.clear();
         }
-
-
 
     }
 
@@ -103,8 +88,6 @@ public class DBRouterJoinPoint {
         String filedValue = null;
         for (Object arg : args) {
             try {
-                System.out.println(arg);
-
                 if (StringUtils.isNotBlank(filedValue)) {
                     break;
                 }
@@ -114,6 +97,7 @@ public class DBRouterJoinPoint {
             }
         }
         return filedValue;
+
     }
 
 }

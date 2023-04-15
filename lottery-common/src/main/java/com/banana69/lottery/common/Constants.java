@@ -16,12 +16,15 @@ public class Constants {
         SUCCESS("0000","成功"),
         UNKNOWN_ERROR("0001","未知错误"),
         ILLEGAL_PARAMETER("0002","非法参数"),
-        INDEX_DUP("0003","主键冲突");
+        INDEX_DUP("0003","主键冲突"),
+        NO_UPDATE("0004","SQL操作无更新");
+
+
 
         private String code;
         private String info;
 
-        ResponseCode(String s, String info) {
+        ResponseCode(String code, String info) {
             this.code = code;
             this.info = info;
         }
@@ -35,7 +38,7 @@ public class Constants {
     }
 
     /**
-     * 活动状态：1编辑、2提审、3撤审、4通过、5运行(审核通过后worker扫描状态)、6拒绝、7关闭、8开启
+     * 活动状态：1、编辑、2提审、3撤审、4通过、5运行(审核通过后worker扫描状态)、6拒绝、7关闭、8开启
      */
     public enum ActivityState {
 

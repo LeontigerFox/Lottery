@@ -2465,3 +2465,84 @@ public abstract class BaseActivityPartake extends ActivityPartakeSupport impleme
 - 抽象类BaseActivityPartake继承数据支撑类并且实现接口方法 IActivityPartake#doPartake
 - 在领取活动doPartake方法中，先是通过父类提供的数据服务，获取到`活动账单`，再定义三个抽象方法：活动信息校验处理、扣减活动库存、领取活动，一次顺序解决活动的领取操作。
 
+
+
+### 11.4 领取活动编程式事务处理
+
+package com.banana69.lottery.domain.activity.service.partake.impl;
+
+```java
+@Override
+    protected Result grabActivity(PartakeReq partake, ActivityBillVO bill) {
+        try {
+            dbRouter.doRouter(partake.getuId());
+            return transactionTemplate.execute(status -> {
+                try {
+                    // 扣减个人已参与次数
+                    int updateCount = userTakeActivityRepository.subtractionLeftCount(bill.getActivityId(), bill.getActivityName(), bill.getTakeCount(),
+                            bill.getUserTakeLeftCount(), partake.getuId(), partake.getPartakeDate());
+                    if(0 == updateCount){
+                        status.setRollbackOnly();
+                        log.error("领取活动，扣减个人已参与次数失败  activityId: {} uId: {}", partake.getActivityId(), partake.getuId());
+                        return Result.buildResult(Constants.ResponseCode.NO_UPDATE);
+                    }
+
+                    // 插入领取活动信息
+                    Long takeId = idGeneratorMap.get(Constants.Ids.SnowFlake).nextId();
+                    userTakeActivityRepository.takeActivity(bill.getActivityId(), bill.getActivityName(), bill.getTakeCount(),
+                            bill.getUserTakeLeftCount(), partake.getuId(), partake.getPartakeDate(), takeId);
+                }catch (DuplicateKeyException e) {
+                    status.setRollbackOnly();
+                    log.error("领取活动，唯一索引冲突 activityId：{} uId：{}", partake.getActivityId(), partake.getuId(), e);
+                    return Result.buildResult(Constants.ResponseCode.INDEX_DUP);
+                }
+                return Result.buildSuccessResult();
+            });
+        }finally {
+            dbRouter.clear();
+        }
+    }
+```
+
+
+
+### 11.5 测试验证
+
+**数据准备**
+
+![image-20230415180317326](README.assets/image-20230415180317326.png)
+
+这里的活动库存可以用来表示活动的人数限制
+
+![image-20230415180422884](README.assets/image-20230415180422884.png)
+
+用户参加活动剩余领取次数
+
+- 注意数据库中，lottery.activity、lottery_01.user_take_activity_count 可用的库存数量，否则不能领取活动，会提示相关信息到控制台
+
+
+
+**单元测试**
+
+```java
+@Test
+    public void test_activityPartake() {
+        PartakeReq req = new PartakeReq("Uhdgkw766120d", 100001L);
+        PartakeResult res = activityPartake.doPartake(req);
+        logger.info("请求参数：{}", JSON.toJSONString(req));
+        logger.info("测试结果：{}", JSON.toJSONString(res));
+    }
+```
+
+测试结果(正常领取活动)
+
+![image-20230415201442031](README.assets/image-20230415201442031.png)
+
+正常领取活动后，会在表 user_take_activity 有对应的领取记录
+
+![image-20230415201651778](README.assets/image-20230415201651778.png)
+
+测试结果(个人领取次数无)
+
+![image-20230415201922333](README.assets/image-20230415201922333.png)
+
