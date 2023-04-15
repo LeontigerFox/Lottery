@@ -84,6 +84,11 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>com.banana69</groupId>
+            <artifactId>db-router-spring-boot-starter</artifactId>
+        </dependency>
+
         <!--业务包-->
         <dependency>
             <groupId>com.banana69.lottery</groupId>

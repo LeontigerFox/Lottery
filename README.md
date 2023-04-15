@@ -1710,3 +1710,758 @@ public void test_alterState() {
 1. **注意 domain、lottery-infrastructure，包结构调整，涉及到 POM 配置文件的修改，在 lottery-infrastructure 引入 domain 的 POM 配置**
 2. **Activity 活动领域目前只开发了一部分内容，需要注意如何考虑把活动一个类思考🤔出部署活动、领取活动和状态流转的设计实现**
 3. **目前我们看到的活动创建还没有一个活动号的设计，下个章节我们会涉及到活动ID策略生成以及领取活动的单号ID生成。**
+
+
+
+## 9. ID生成策略领域开发
+
+描述：使用雪花算法、阿帕奇工具包 RandomStringUtils、日期拼接，三种方式生成ID，分别用在订单号、策略ID、活动号的生成上。
+
+### 9.1 开发日志
+
+- 从本章节开始将陆续引入一些基础内容的搭建，包括本章节关于ID的生成，及后续需要引入的分库分表、redis等。
+- 使用策略模式把三种生成ID的算法进行统一包装，由调用方法决定使用哪种生成ID的策略。策略模式属于行为模式的一种，一个类的行为或算法可以在运行时进行修改。
+- hutool工具包具有包装好的工具类，一般在实际使用使用雪花算法时需要做一些优化处理，如支持时间回拨、支持手工插入、简短生成长度、提升生成速度等。
+- 而日期拼接和随机数工具包生成方式，都需要自己保证唯一性，一般使用此方式生成的ID，都用在单表中，本身可以在数据库配置唯一ID。
+
+自增ID可能导致一些信息的泄露，以及在后续做数据迁移到分库分表中存在一定的麻烦。
+
+### 9.2 支撑领域
+
+在domain领域包下新增支持领域，ID的生成服务就放到这个领域下实现
+
+关于ID的生成因为有三种不同ID用于在不同的场景下：
+
+- **订单号：唯一、大量、订单创建时使用、分库分表**
+- **活动号：唯一、少量、活动创建时使用、单库单表**
+- **策略号：唯一、少量、活动创建时使用、单库单表**
+
+
+
+### 9.3 策略模式
+
+通过策略模式的使用，来开发策略ID的服务提供。之所以使用策略模式，是因为外部的调用方会需要根据不同的场景来选择出适合的ID生成策略，而策略模式就非常适合这一场景的使用。
+
+参考文章：[重学 Java 设计模式：实战策略模式「模拟多种营销类型优惠券，折扣金额计算策略场景](https://mp.weixin.qq.com/s/zOFLtSFVrYEyTuihzwgKYw)
+
+
+
+#### 9.3.1 工程结构
+
+<img src="README.assets/image-20230413164755707.png" alt="image-20230413164755707" style="zoom:50%;" />
+
+- IIdGenerator，定义生成ID的策略接口。RandomNumeric、ShortCode、SnowFlake，是三种生成ID的策略。
+- IdContext，ID生成上下文，也就是从这里提供策略配置服务。
+
+
+
+#### 9.3.2 IIdGenerator 策略接口
+
+```java
+public interface IIdGenerator {
+
+    /**
+     * 获取ID，目前有两种实现方式
+     * 1. 雪花算法，用于生成单号
+     * 2. 日期算法，用于生成活动编号类，特性是生成数字串较短，但指定时间内不能生成太多
+     * 3. 随机算法，用于生成策略ID
+     *
+     * @return ID
+     */
+    long nextId();
+
+}
+```
+
+#### 9.3.3. 策略ID实现
+
+```java
+@Component
+public class SnowFlake implements IIdGenerator {
+
+    private Snowflake snowflake;
+
+    @PostConstruct
+    public void init() {
+        // 0 ~ 31 位，可以采用配置的方式使用
+        long workerId;
+        try {
+            workerId = NetUtil.ipv4ToLong(NetUtil.getLocalhostStr());
+        } catch (Exception e) {
+            workerId = NetUtil.getLocalhostStr().hashCode();
+        }
+
+        workerId = workerId >> 16 & 31;
+
+        long dataCenterId = 1L;
+        snowflake = IdUtil.createSnowflake(workerId, dataCenterId);
+    }
+
+    @Override
+    public synchronized long nextId() {
+        return snowflake.nextId();
+    }
+
+}
+```
+
+- 使用 hutool 工具类提供的雪花算法，提供生成ID服务
+- 其他方式的 ID 生成可以直接参考源码
+
+#### 9.3.4. 策略服务上下文
+
+```java
+@Configuration
+public class IdContext {
+
+    /**
+     * 创建 ID 生成策略对象，属于策略设计模式的使用方式
+     *
+     * @param snowFlake 雪花算法，长码，大量
+     * @param shortCode 日期算法，短码，少量，全局唯一需要自己保证
+     * @param randomNumeric 随机算法，短码，大量，全局唯一需要自己保证
+     * @return IIdGenerator 实现类
+     */
+    @Bean
+    public Map<Constants.Ids, IIdGenerator> idGenerator(SnowFlake snowFlake, ShortCode shortCode, RandomNumeric randomNumeric) {
+        Map<Constants.Ids, IIdGenerator> idGeneratorMap = new HashMap<>(8);
+        idGeneratorMap.put(Constants.Ids.SnowFlake, snowFlake);
+        idGeneratorMap.put(Constants.Ids.ShortCode, shortCode);
+        idGeneratorMap.put(Constants.Ids.RandomNumeric, randomNumeric);
+        return idGeneratorMap;
+    }
+
+}
+```
+
+- 通过配置注解 `@Configuration` 和 Bean 对象的生成 `@Bean`，来把策略生成ID服务包装到 `Map<Constants.Ids, IIdGenerator>` 对象中。
+
+### 9.3.4 测试验证
+
+**com.banana69.lottery.test.domain.SupportTest**
+
+```java
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class SupportTest {
+
+    private Logger logger = LoggerFactory.getLogger(SupportTest.class);
+
+    @Resource
+    private Map<Constants.Ids, IIdGenerator> idGeneratorMap;
+
+    @Test
+    public void test_ids() {
+        logger.info("雪花算法策略，生成ID：{}", idGeneratorMap.get(Constants.Ids.SnowFlake).nextId());
+        logger.info("日期算法策略，生成ID：{}", idGeneratorMap.get(Constants.Ids.ShortCode).nextId());
+        logger.info("随机算法策略，生成ID：{}", idGeneratorMap.get(Constants.Ids.RandomNumeric).nextId());
+    }
+}
+```
+
+![image-20230413171545762](README.assets/image-20230413171545762.png)
+
+
+
+## 10. 实现分库分表
+
+描述：开发一个基于 HashMap 核心设计原理，使用哈希散列+扰动函数的方式，把数据散列到多个库表中的组件，并验证使用。
+
+### 10.1 开发日志
+
+- 新增数据库路由组件开发工程 db-router-spring-boot-starter 这是一个自研的分库分表组件。主要用到的技术点包括：散列算法、数据源切换、AOP切面、SpringBoot Starter 开发等
+- 完善分库中表信息，user_take_activity、user_take_activity_count、user_strategy_export_001~004，用于测试验证数据库路由组件
+- 基于Mybatis拦截器对数据库路由分表使用方式进行优化，减少用户在使用过程中需要对数据库语句进行硬编码处理
+
+
+
+### 10.2 需求分析
+
+由于业务体量较大，数据增长较快，所以把用户数据拆分到不同的库表中，减轻数据库的压力。
+
+分库分表主要有**垂直拆分和水平拆分：**
+
+- **垂直拆分：**指按照业务将表进行分类，分布到不同的数据库上，这样也就将数据的压力分担到不同的库上面。最终一个数据库由很多表的构成，每个表对应着不同的业务，也就是专库专用。
+- **水平拆分：**如果垂直拆分后遇到单机瓶颈，可以使用水平拆分。相对于垂直拆分的区别是：垂直拆分是把不同的表拆到不同的数据库中，而本章节需要实现的水平拆分，是把同一个表拆到不同的数据库中。如：user_001、user_002
+
+
+
+实现水平拆分的路由设计
+
+<img src="README.assets/image-20230413172344572.png" alt="image-20230413172344572" style="zoom:33%;" />
+
+包含知识点：
+
+1. 关于AOP切面拦截的使用，需要给使用数据库路由的方法做上标记，便于处理分库分表逻辑
+2. 数据源的切换操作，分库操作设计在多个数据源间进行链接切换，以便数据分配给不同的数据库
+3. 数据库表寻址操作，一条数据分配到那个数据库，哪张表都需要进行索引计算，在方法调用的过程中最终通过ThreadLocal记录。
+4. 为了让数据均匀的分配到不同的库表中，需要考虑如何进行数据散列的操作，解决数据集中在某个库的某个表的情况。
+
+因此需要用到的技术有：
+
+```
+AOP`、`数据源切换`、`散列算法`、`哈希寻址`、`ThreadLoca`l以及`SpringBoot的Starter开发方式`等技术。
+```
+
+而像`哈希散列`、`寻址`、`数据存放与HashMap类似。
+
+
+
+### 10.3 技术调研
+
+在 JDK 源码中，包含的数据结构设计有：数组、链表、队列、栈、红黑树，具体的实现有 ArrayList、LinkedList、Queue、Stack，而这些在数据存放都是顺序存储，并没有用到哈希索引的方式进行处理。而 HashMap、ThreadLocal，两个功能则用了哈希索引、散列算法以及在数据膨胀时候的拉链寻址和开放寻址，所以我们要分析和借鉴的也会集中在这两个功能上。
+
+
+
+### 10.3.1 ThreadLocal
+
+<img src="README.assets/image-20230413173405412.png" alt="image-20230413173405412" style="zoom:50%;" />
+
+```java
+@Test
+    public void test_idx() {
+        int hashCode = 0;
+        for (int i = 0; i < 5; i++) {
+            hashCode = i * 0x61c88647 + 0x61c88647;
+            int idx = hashCode & 4;
+            System.out.println("斐波那契散列：" + idx + " 普通散列：" + (String.valueOf(i).hashCode() & 15));
+        }
+    }
+```
+
+![image-20230413174529589](README.assets/image-20230413174529589.png)
+
+**数据结构**：散列表的数组结构
+
+**散列算法**：斐波那契（Fibonacci）散列法
+
+**寻址方式**：Fibonacci 散列法可以让数据更加分散，在发生数据碰撞时进行开放寻址，从碰撞节点向后寻找位置进行存放元素。公式：`f(k) = ((k * 2654435769) >> X) << Y对于常见的32位整数而言，也就是 f(k) = (k * 2654435769) >> 28 `，黄金分割点：`(√5 - 1) / 2 = 0.6180339887` `1.618:1 == 1:0.618`
+
+可以参考寻址方式和散列算法，但这种数据结构与要设计实现作用到数据库上的结构相差较大，不过 ThreadLocal 可以用于存放和传递数据索引信息。
+
+
+
+#### 10.3.2 HashMap
+
+<img src="README.assets/image-20230413183255885.png" alt="image-20230413183255885" style="zoom:50%;" />
+
+```java
+public static int disturbHashIdx(String key, int size) {
+    return (size - 1) & (key.hashCode() ^ (key.hashCode() >>> 16));
+}
+```
+
+**数据结构**：哈希桶数组 + 链表 + 红黑树
+
+**散列算法**：扰动函数、哈希索引，可以让数据更加散列的分布
+
+**寻址方式**：通过拉链寻址的方式解决数据碰撞，数据存放时会进行索引地址，遇到碰撞产生数据链表，在一定容量超过8个元素进行扩容或者树化。
+
+可以把散列算法、寻址方式都运用到数据库路由的设计实现中，还有整个数组+链表的方式其实库+表的方式也有类似之处。
+
+
+
+### 10.4 设计实现
+
+#### 10.4.1 定义路由注解
+
+定义：
+
+```java
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.METHOD})
+public @interface DBRouter {
+
+    String key() default "";
+
+}
+```
+
+使用：
+
+```java
+@Mapper
+public interface IUserDao {
+
+     @DBRouter(key = "userId")
+     User queryUserInfoByUserId(User req);
+
+     @DBRouter(key = "userId")
+     void insertUser(User req);
+
+}
+```
+
+- 首先定义一个注解，用于放置在被数据库路由的方法上
+- 使用方式是通过方法配置注解，就可以被指定的AOP切面进行拦截，拦截后进行相应的数据库路由计算和判断，并切换到相应的操作数据源上。
+
+
+
+#### 10.4.2 解析路由配置
+
+<img src="README.assets/image-20230413184537986.png" alt="image-20230413184537986" style="zoom:30%;" />
+
+- 以上就是我们实现完数据库路由组件后的一个数据源配置，在分库分表下的数据源使用中，都需要支持多数据源的信息配置，这样才能满足不同需求的扩展。
+- 对于这种自定义较大的信息配置，就需要使用到 `org.springframework.context.EnvironmentAware` 接口，来获取配置文件并提取需要的配置信息。
+
+
+
+**数据源配置提取**
+
+```java
+@Override
+public void setEnvironment(Environment environment) {
+    String prefix = "router.jdbc.datasource.";    
+
+    dbCount = Integer.valueOf(environment.getProperty(prefix + "dbCount"));
+    tbCount = Integer.valueOf(environment.getProperty(prefix + "tbCount"));    
+
+    String dataSources = environment.getProperty(prefix + "list");
+    for (String dbInfo : dataSources.split(",")) {
+        Map<String, Object> dataSourceProps = PropertyUtil.handle(environment, prefix + dbInfo, Map.class);
+        dataSourceMap.put(dbInfo, dataSourceProps);
+    }
+}
+```
+
+- prefix 是数据源配置的开头信息，可以自定义需要的开头内容
+- dbCount、tbCount、dataSources、dataSourceProps，都是对配置信息的提取，并存放到 dataSourceMap 中便于后续使用。
+
+
+
+#### 10.4.3 数据源切换
+
+在结合 SpringBoot 开发的 Starter 中，需要提供一个 DataSource 的实例化对象，那么这个对象我们就放在 DataSourceAutoConfig 来实现，并且这里提供的数据源是可以动态变换的，也就是支持动态切换数据源。
+
+**创建数据源：**
+
+```java
+@Bean
+public DataSource dataSource() {
+    // 创建数据源
+    Map<Object, Object> targetDataSources = new HashMap<>();
+    for (String dbInfo : dataSourceMap.keySet()) {
+        Map<String, Object> objMap = dataSourceMap.get(dbInfo);
+        targetDataSources.put(dbInfo, new DriverManagerDataSource(objMap.get("url").toString(), objMap.get("username").toString(), objMap.get("password").toString()));
+    }     
+
+    // 设置数据源
+    DynamicDataSource dynamicDataSource = new DynamicDataSource();
+    dynamicDataSource.setTargetDataSources(targetDataSources);
+    dynamicDataSource.setDefaultTargetDataSource(new DriverManagerDataSource(defaultDataSourceConfig.get("url").toString(), defaultDataSourceConfig.get("username").toString(), defaultDataSourceConfig.get("password").toString()));
+
+    return dynamicDataSource;
+}
+```
+
+这里是一个简化的创建案例，把基于从配置信息中读取到的数据源信息，进行实例化创建。
+
+数据源创建完成后存放到 `DynamicDataSource` 中，它是一个继承了 AbstractRoutingDataSource 的实现类，这个类里可以存放和读取相应的具体调用的数据源信息。
+
+
+
+#### 10.4.4 切面拦截
+
+在AOP的切面拦截中需要完成：数据库路由计算、扰动函数加强散列、计算库表索引、设置到ThreadLocal传递数据源
+
+```java
+@Around("aopPoint() && @annotation(dbRouter)")
+public Object doRouter(ProceedingJoinPoint jp, DBRouter dbRouter) throws Throwable {
+    String dbKey = dbRouter.key();
+    if (StringUtils.isBlank(dbKey)) throw new RuntimeException("annotation DBRouter key is null！");
+
+    // 计算路由
+    String dbKeyAttr = getAttrValue(dbKey, jp.getArgs());
+    int size = dbRouterConfig.getDbCount() * dbRouterConfig.getTbCount();
+
+    // 扰动函数
+    int idx = (size - 1) & (dbKeyAttr.hashCode() ^ (dbKeyAttr.hashCode() >>> 16));
+
+    // 库表索引
+    int dbIdx = idx / dbRouterConfig.getTbCount() + 1;
+    int tbIdx = idx - dbRouterConfig.getTbCount() * (dbIdx - 1);   
+
+    // 设置到 ThreadLocal
+    DBContextHolder.setDBKey(String.format("%02d", dbIdx));
+    DBContextHolder.setTBKey(String.format("%02d", tbIdx));
+    logger.info("数据库路由 method：{} dbIdx：{} tbIdx：{}", getMethod(jp).getName(), dbIdx, tbIdx);
+   
+    // 返回结果
+    try {
+        return jp.proceed();
+    } finally {
+        DBContextHolder.clearDBKey();
+        DBContextHolder.clearTBKey();
+    }
+}
+```
+
+- 简化的核心逻辑实现代码如上，首先我们提取了库表乘积的数量，把它当成 HashMap 一样的长度进行使用。
+- 接下来使用和 HashMap 一样的扰动函数逻辑，让数据分散的更加散列。
+- 当计算完总长度上的一个索引位置后，还需要把这个位置折算到库表中，看看总体长度的索引因为落到哪个库哪个表。
+- 最后是把这个计算的索引信息存放到 ThreadLocal 中，用于传递在方法调用过程中可以提取到索引信息。
+
+
+
+#### 10.4.5 拦截器处理分表
+
+- 最开始考虑直接在Mybatis对应的表 `INSERT INTO user_strategy_export`**_${tbIdx}** 添加字段的方式处理分表。但这样看上去并不优雅，不过也并不排除这种使用方式，仍然是可以使用的。
+- 那么我们可以基于 Mybatis 拦截器进行处理，通过拦截 SQL 语句动态修改添加分表信息，再设置回 Mybatis 执行 SQL 中。
+- 此外再完善一些分库分表路由的操作，比如配置默认的分库分表字段以及单字段入参时默认取此字段作为路由字段。
+
+```java
+@Intercepts({@Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})})
+public class DynamicMybatisPlugin implements Interceptor {
+
+
+    private Pattern pattern = Pattern.compile("(from|into|update)[\\s]{1,}(\\w{1,})", Pattern.CASE_INSENSITIVE);
+
+    @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+        // 获取StatementHandler
+        StatementHandler statementHandler = (StatementHandler) invocation.getTarget();
+        MetaObject metaObject = MetaObject.forObject(statementHandler, SystemMetaObject.DEFAULT_OBJECT_FACTORY, SystemMetaObject.DEFAULT_OBJECT_WRAPPER_FACTORY, new DefaultReflectorFactory());
+        MappedStatement mappedStatement = (MappedStatement) metaObject.getValue("delegate.mappedStatement");
+
+        // 获取自定义注解判断是否进行分表操作
+        String id = mappedStatement.getId();
+        String className = id.substring(0, id.lastIndexOf("."));
+        Class<?> clazz = Class.forName(className);
+        DBRouterStrategy dbRouterStrategy = clazz.getAnnotation(DBRouterStrategy.class);
+        if (null == dbRouterStrategy || !dbRouterStrategy.splitTable()){
+            return invocation.proceed();
+        }
+
+        // 获取SQL
+        BoundSql boundSql = statementHandler.getBoundSql();
+        String sql = boundSql.getSql();
+
+        // 替换SQL表名 USER 为 USER_03
+        Matcher matcher = pattern.matcher(sql);
+        String tableName = null;
+        if (matcher.find()) {
+            tableName = matcher.group().trim();
+        }
+        assert null != tableName;
+        String replaceSql = matcher.replaceAll(tableName + "_" + DBContextHolder.getTBKey());
+
+        // 通过反射修改SQL语句
+        Field field = boundSql.getClass().getDeclaredField("sql");
+        field.setAccessible(true);
+        field.set(boundSql, replaceSql);
+
+        return invocation.proceed();
+    }
+}
+```
+
+
+
+### 10.5 测试验证
+
+#### 10.5.1 分库
+
+**在需要使用数据库路东的DAO方法加上注解**
+
+```java
+// com.banana69..lottery.infrastructure.dao.IUserTakeActivityDao
+@Mapper
+public interface IUserTakeActivityDao {
+
+    /**
+     * 插入用户领取活动信息
+     *
+     * @param userTakeActivity 入参
+     */
+    @DBRouter(key = "uId")
+    void insert(UserTakeActivity userTakeActivity);
+
+}
+```
+
+- @DBRouter(key = "uId") key 是入参对象中的属性，用于提取作为分库分表路由字段使用
+
+**SQL语句：**
+
+```xml
+<insert id="insertUserTakeActivity" parameterType="com.banana69.lottery.infrastructure.po.UserTakeActivity">
+        INSERT INTO user_take_activity
+        (u_id, take_id, activity_id, activity_name, take_date,
+        take_count, uuid, create_time, update_time)
+        VALUES
+        (#{uId}, #{takeId}, #{activityId}, #{activityName}, #{takeDate},
+        #{takeCount}, #{uuid}, now(), now())
+</insert>
+```
+
+如果一个表只分库不分表，则它的 sql 语句并不会有什么差异
+
+如果需要分表，那么则需要在表名后面加入 user_take_activity_${tbIdx} 同时入参对象需要继承 DBRouterBase 这样才可以拿到 tbIdx 分表信息 `这部分内容我们在后续开发中会有体现`
+
+**测试：**
+
+```java
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class UserTakeActivityDaoTest {
+
+    private Logger logger = LoggerFactory.getLogger(ActivityDaoTest.class);
+
+    @Resource
+    private IUserTakeActivityDao userTakeActivityDao;
+
+    @Test
+    public void test_insert() {
+        UserTakeActivity userTakeActivity = new UserTakeActivity();
+        userTakeActivity.setuId("Uhdgkw766120d"); // 1库：Ukdli109op89oi 2库：Ukdli109op811d
+        userTakeActivity.setTakeId(121019889410L);
+        userTakeActivity.setActivityId(100001L);
+        userTakeActivity.setActivityName("测试活动");
+        userTakeActivity.setTakeDate(new Date());
+        userTakeActivity.setTakeCount(10);
+        userTakeActivity.setUuid("Uhdgkw766120d");
+
+        userTakeActivityDao.insert(userTakeActivity);
+    }
+
+}
+```
+
+测试中分别验证了不同的 uId 主要是为了解决数据散列到不同库表中去。
+
+
+
+#### 10.5.2 分表
+
+```java
+@Mapper
+@DBRouterStrategy(splitTable = true)
+public interface IUserStrategyExportDao {
+
+    /**
+     * 新增数据
+     * @param userStrategyExport 用户策略
+     */
+    @DBRouter(key = "uId")
+    void insert(UserStrategyExport userStrategyExport);
+
+    /**
+     * 查询数据
+     * @param uId 用户ID
+     * @return 用户策略
+     */
+    @DBRouter
+    UserStrategyExport queryUserStrategyExportByUId(String uId);
+
+}
+```
+
+- @DBRouterStrategy(splitTable = true) 配置分表信息，配置后会通过数据库路由组件把sql语句添加上分表字段，比如表 user 修改为 user_003
+- @DBRouter(key = "uId") 设置路由字段
+- @DBRouter 未配置情况下走默认字段，routerKey: uId
+
+**SQL语句：**
+
+```xml
+<insert id="insertUserStrategy" parameterType="com.banana69.lottery.infrastructure.po.UserStrategyExport">
+        INSERT INTO user_strategy_export
+        (u_id, activity_id, order_id, strategy_id, strategy_mode,
+        grant_type, grant_date, grant_state, award_id, award_type,
+        award_name, award_content, uuid, create_time, update_time)
+        VALUES
+        (#{uId},#{activityId},#{orderId},#{strategyId},#{strategyMode},
+        #{grantType},#{grantDate},#{grantState},#{awardId},#{awardType},
+        #{awardName},#{awardContent},#{uuid},now(),now())
+</insert>
+
+<select id="queryUserStrategyExportByUId" parameterType="java.lang.String" resultMap="userStrategyExportMap">
+        SELECT id, u_id, activity_id, order_id, strategy_id, strategy_mode,
+        grant_type, grant_date, grant_state, award_id, award_type,
+        award_name, award_content, uuid, create_time, update_time
+        FROM user_strategy_export
+        WHERE u_id = #{uId}
+</select>
+```
+
+正常写 SQL 语句即可，如果你不使用注解 @DBRouterStrategy(splitTable = true) 也可以使用 user_strategy_export`_003`
+
+
+
+**单元测试**
+
+```java
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class UserStrategyExportDaoTest {
+
+    private Logger logger = LoggerFactory.getLogger(UserStrategyExportDaoTest.class);
+
+    @Resource
+    private IUserStrategyExportDao userStrategyExportDao;
+
+    @Resource
+    private Map<Constants.Ids, IIdGenerator> idGeneratorMap;
+
+    @Test
+    public void test_insert() {
+        UserStrategyExport userStrategyExport = new UserStrategyExport();
+        userStrategyExport.setuId("Uhdgkw766120d");
+        userStrategyExport.setActivityId(idGeneratorMap.get(Constants.Ids.ShortCode).nextId());
+        userStrategyExport.setOrderId(idGeneratorMap.get(Constants.Ids.SnowFlake).nextId());
+        userStrategyExport.setStrategyId(idGeneratorMap.get(Constants.Ids.RandomNumeric).nextId());
+        userStrategyExport.setStrategyMode(Constants.StrategyMode.SINGLE.getCode());
+        userStrategyExport.setGrantType(1);
+        userStrategyExport.setGrantDate(new Date());
+        userStrategyExport.setGrantState(1);
+        userStrategyExport.setAwardId("1");
+        userStrategyExport.setAwardType(Constants.AwardType.DESC.getCode());
+        userStrategyExport.setAwardName("IMac");
+        userStrategyExport.setAwardContent("奖品描述");
+        userStrategyExport.setUuid(String.valueOf(userStrategyExport.getOrderId()));
+
+        userStrategyExportDao.insert(userStrategyExport);
+    }
+
+    @Test
+    public void test_select() {
+        UserStrategyExport userStrategyExport = userStrategyExportDao.queryUserStrategyExportByUId("Uhdgkw766120d");
+        logger.info("测试结果：{}", JSON.toJSONString(userStrategyExport));
+    }
+}
+```
+
+![image-20230415133415336](README.assets/image-20230415133415336.png)
+
+
+
+## 11. 声明事务领取活动领域开发
+
+描述：扩展数据库路由组件，支持编程式事务处理。用于领取活动领域功能开发中用户领取活动信息，在一个事务下记录多张表数据。
+
+
+
+### 11.1 开发日志
+
+- 扩展和完善db-router-spring-boot-starter 数据库路由组建，拆解路由策略满足编程式路由配合编程式事务一起使用。
+- 补全库表 activity 增加字段 strategy_id 。抽奖策略ID字段strategy_id用于关联活动与抽奖系统的关系。即当用户领取完成后，可以通过活动表中的抽奖策略ID继续执行抽奖操作。
+- 基于模版模式开发领取活动领域，在领取活动中需要进行活动的日期库存、状态等校验，并处理扣减库存、添加用户领取信息、封装结果等一系列流程操作，因此使用抽象类定义模板模式更为妥当
+
+
+
+### 11.2 数据库路由组件扩展编程式事务
+
+**提出问题：**
+
+如果一个场景需要在同一事务下，连续操作不同的dao，就会涉及到在dao上注解`@DBRouter(key = "uId")`反复切换。反复切换后，事务无法进行处理。
+
+**解决：**
+
+把数据源的切换放在事务处理前，而事务操作通过编程式编码进行处理。
+
+#### 11.2.1 拆解路由算法策略，单独提供路由算法
+
+```java
+public interface IDBRouterStrategy {
+
+    void doRouter(String dbKeyAttr);
+
+    void clear();
+
+}
+```
+
+- 把路由算法拆解出来，无论是切面中还是硬编码，都通过这个方法进行计算路由
+
+
+
+#### 11.2.2 配置事务处理对象
+
+```java
+@Bean
+public IDBRouterStrategy dbRouterStrategy(DBRouterConfig dbRouterConfig) {
+    return new DBRouterStrategyHashCode(dbRouterConfig);
+}
+
+@Bean
+public TransactionTemplate transactionTemplate(DataSource dataSource) {
+    DataSourceTransactionManager dataSourceTransactionManager = new DataSourceTransactionManager();
+    dataSourceTransactionManager.setDataSource(dataSource);
+    TransactionTemplate transactionTemplate = new TransactionTemplate();
+    transactionTemplate.setTransactionManager(dataSourceTransactionManager);
+    transactionTemplate.setPropagationBehaviorName("PROPAGATION_REQUIRED");
+    return transactionTemplate;
+}
+
+```
+
+- 创建路由策略对象，便于切面和硬编码注入使用
+- 创建事务对象，用于编程式事务引入
+
+### 11.3 活动领取模版抽象类
+
+```java
+public abstract class BaseActivityPartake extends ActivityPartakeSupport implements IActivityPartake {
+
+    @Override
+    public PartakeResult doPartake(PartakeReq req) {
+        // 查询活动账单
+        ActivityBillVO activityBillVO = super.queryActivityBill(req);
+
+        // 活动信息校验处理【活动库存、状态、日期、个人参与次数】
+        Result checkResult = this.checkActivityBill(req, activityBillVO);
+        if (!Constants.ResponseCode.SUCCESS.getCode().equals(checkResult.getCode())) {
+            return new PartakeResult(checkResult.getCode(), checkResult.getInfo());
+        }
+
+        // 扣减活动库存【目前为直接对配置库中的 lottery.activity 直接操作表扣减库存，后续优化为Redis扣减】
+        Result subtractionActivityResult = this.subtractionActivityStock(req);
+        if (!Constants.ResponseCode.SUCCESS.getCode().equals(subtractionActivityResult.getCode())) {
+            return new PartakeResult(subtractionActivityResult.getCode(), subtractionActivityResult.getInfo());
+        }
+
+        // 领取活动信息【个人用户把活动信息写入到用户表】
+        Result grabResult = this.grabActivity(req, activityBillVO);
+        if (!Constants.ResponseCode.SUCCESS.getCode().equals(grabResult.getCode())) {
+            return new PartakeResult(grabResult.getCode(), grabResult.getInfo());
+        }
+
+        // 封装结果【返回的策略ID，用于继续完成抽奖步骤】
+        PartakeResult partakeResult = new PartakeResult(Constants.ResponseCode.SUCCESS.getCode(), Constants.ResponseCode.SUCCESS.getInfo());
+        partakeResult.setStrategyId(activityBillVO.getStrategyId());
+        return partakeResult;
+    }
+
+    /**
+     * 活动信息校验处理，把活动库存、状态、日期、个人参与次数
+     *
+     * @param partake 参与活动请求
+     * @param bill    活动账单
+     * @return 校验结果
+     */
+    protected abstract Result checkActivityBill(PartakeReq partake, ActivityBillVO bill);
+
+    /**
+     * 扣减活动库存
+     *
+     * @param req 参与活动请求
+     * @return 扣减结果
+     */
+    protected abstract Result subtractionActivityStock(PartakeReq req);
+
+    /**
+     * 领取活动
+     *
+     * @param partake 参与活动请求
+     * @param bill    活动账单
+     * @return 领取结果
+     */
+    protected abstract Result grabActivity(PartakeReq partake, ActivityBillVO bill);
+
+}
+
+```
+
+- 抽象类BaseActivityPartake继承数据支撑类并且实现接口方法 IActivityPartake#doPartake
+- 在领取活动doPartake方法中，先是通过父类提供的数据服务，获取到`活动账单`，再定义三个抽象方法：活动信息校验处理、扣减活动库存、领取活动，一次顺序解决活动的领取操作。
+
