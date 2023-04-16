@@ -2546,3 +2546,151 @@ package com.banana69.lottery.domain.activity.service.partake.impl;
 
 ![image-20230415201922333](README.assets/image-20230415201922333.png)
 
+
+
+## 12. 在应用层编排抽奖过程
+
+描述：在 application 应用层调用领域服务功能，编排抽奖过程，包括：领取活动、执行抽奖、落库结果，这其中还有一部分待实现的发送 MQ 消息，后续处理。
+
+
+
+### 12.1 开发日志
+
+- 分别在两个分库的表 lottery_01.user_take_activity、lottery_02.user_take_activity 中添加 state`【活动单使用状态 0未使用、1已使用】` 状态字段，这个状态字段用于写入中奖信息到 user_strategy_export_000~003 表中时候，两个表可以做一个幂等性的事务。同时还需要加入 strategy_id 策略ID字段，用于处理领取了活动单但执行抽奖失败时，可以继续获取到此抽奖单继续执行抽奖，而不需要重新领取活动。*其实领取活动就像是一种活动镜像信息，可以在控制幂等反复使用*
+- 在 lottery-application 模块下新增 process 包用于流程编排，其实它也是 service 服务包是对领域功能的封装，很薄的一层。一般这一层的处理可以使用可视化的流程编排工具通过拖拽的方式，处理这部分代码的逻辑。
+- 学习本章记得更新分支下的最新SQL语句，另外本章节还连带引入了需要MQ、Worker的场景，后续开发到这些功能的时候，会继续完善。
+
+
+
+### 12.2  编排流程
+
+<img src="README.assets/image-20230416121407965.png" alt="image-20230416121407965"  />
+
+- 抽奖整个活动过程的流程编排，主要包括：对活动的领取、对抽奖的操作、对中奖结果的存放，以及如何处理发奖，对于发奖流程我们设计为MQ触发，后续再补全这部分内容。
+- 对于每一个流程节点编排的内容，都是在领域层开发完成的，而应用层只是做最为简单的且很薄的一层。*其实这块也很符合目前很多低代码的使用场景，通过界面可视化控制流程编排，生成代码。
+
+
+
+### 12.3 领取活动增加判断和返回领取单ID
+
+**BaseActivityPartake#doPartake**
+
+```java
+@Override
+    public PartakeResult doPartake(PartakeReq req) {
+        // 1. 查询是否存在未执行抽奖领取活动单【user_take_activity 存在 state = 0，领取了但抽奖过程失败的，可以直接返回领取结果继续抽奖】
+        UserTakeActivityVO userTakeActivityVO = this.queryNoConsumedTakeActivityOrder(req.getActivityId(), req.getuId());
+        if (null != userTakeActivityVO) {
+            return buildPartakeResult(userTakeActivityVO.getStrategyId(), userTakeActivityVO.getTakeId());
+        }
+
+        // 2. 查询活动账单
+        ActivityBillVO activityBillVO = super.queryActivityBill(req);
+
+        // 3. 活动信息校验处理【活动库存、状态、日期、个人参与次数】
+        Result checkResult = this.checkActivityBill(req, activityBillVO);
+        if (!Constants.ResponseCode.SUCCESS.getCode().equals(checkResult.getCode())) {
+            return new PartakeResult(checkResult.getCode(), checkResult.getInfo());
+        }
+
+        // 4. 扣减活动库存【目前为直接对配置库中的 lottery.activity 直接操作表扣减库存，后续优化为Redis扣减】
+        Result subtractionActivityResult = this.subtractionActivityStock(req);
+        if (!Constants.ResponseCode.SUCCESS.getCode().equals(subtractionActivityResult.getCode())) {
+            return new PartakeResult(subtractionActivityResult.getCode(), subtractionActivityResult.getInfo());
+        }
+
+        // 5. 插入领取活动信息【个人用户把活动信息写入到用户表】
+        Long takeId = idGeneratorMap.get(Constants.Ids.SnowFlake).nextId();
+        Result grabResult = this.grabActivity(req, activityBillVO, takeId);
+        if (!Constants.ResponseCode.SUCCESS.getCode().equals(grabResult.getCode())) {
+            return new PartakeResult(grabResult.getCode(), grabResult.getInfo());
+        }
+
+        return buildPartakeResult(activityBillVO.getStrategyId(), takeId);
+
+    }
+```
+
+- 活动领域中主要是领取活动新增加了`第1步的查询流程`和`修改第5步返回takeId`
+- 查询是否存在未执行抽奖领取活动单。在SQL查询当前活动ID，用户最早领取但未消费的一条记录【这部分一般会有业务流程限制，比如是否处理最先还是最新领取单，要根据自己的业务实际场景进行处理】
+- this.grabActivity 方法，用户领取活动时候，新增记录：strategy_id、state 两个字段，这两个字段就是为了处理用户对领取镜像记录的二次处理未执行抽奖的领取单，以及state状态控制事务操作的幂等性。
+
+
+
+### 12.4 抽奖活动流程编排
+
+**com.banana69.lottery.application.process.impl.ActivityProcessImpl**
+
+```java
+@Override
+public DrawProcessResult doDrawProcess(DrawProcessReq req) {
+    // 1. 领取活动
+    PartakeResult partakeResult = activityPartake.doPartake(new PartakeReq(req.getuId(), req.getActivityId()));
+    if (!Constants.ResponseCode.SUCCESS.getCode().equals(partakeResult.getCode())) {
+        return new DrawProcessResult(partakeResult.getCode(), partakeResult.getInfo());
+    }
+    Long strategyId = partakeResult.getStrategyId();
+    Long takeId = partakeResult.getTakeId();
+
+    // 2. 执行抽奖
+    DrawResult drawResult = drawExec.doDrawExec(new DrawReq(req.getuId(), strategyId, String.valueOf(takeId)));
+    if (Constants.DrawState.FAIL.getCode().equals(drawResult.getDrawState())) {
+        return new DrawProcessResult(Constants.ResponseCode.LOSING_DRAW.getCode(), Constants.ResponseCode.LOSING_DRAW.getInfo());
+    }
+    DrawAwardInfo drawAwardInfo = drawResult.getDrawAwardInfo();
+
+    // 3. 结果落库
+    activityPartake.recordDrawOrder(buildDrawOrderVO(req, strategyId, takeId, drawAwardInfo));
+
+    // 4. 发送MQ，触发发奖流程
+
+    // 5. 返回结果
+    return new DrawProcessResult(Constants.ResponseCode.SUCCESS.getCode(), Constants.ResponseCode.SUCCESS.getInfo(), drawAwardInfo);
+}
+
+```
+
+按照流程图设计，分别进行：领取活动、执行抽奖、结果落库、发送MQ、返回结果，这些步骤的操作。其实这块的流程就相对来说比较简单了，主要是串联起各个抽奖步骤的操作。
+
+
+
+### 12.5 测试验证
+
+```java
+@Test
+    public void test_doDrawProcess() {
+        DrawProcessReq req = new DrawProcessReq();
+        req.setuId("test_uid");
+        req.setActivityId(100001L);
+        int i = 0;
+        while(i < 3)
+        {
+            DrawProcessResult drawProcessResult = activityProcess.doDrawProcess(req);
+            log.info("请求入参：{}", JSON.toJSONString(req));
+            log.info("测试结果：{}", JSON.toJSONString(drawProcessResult));
+            i++;
+        }
+    }
+```
+
+抽奖策略 1:
+
+<img src="README.assets/image-20230416191114580.png" alt="image-20230416191114580" style="zoom:67%;" />
+
+抽奖策略2：
+
+需要先清空表`user_take_activity`中的数据，否则会发生索引冲突
+
+<img src="README.assets/image-20230416191355926.png" alt="image-20230416191355926" style="zoom:67%;" />
+
+清楚后重新抽奖：
+
+<img src="README.assets/image-20230416191454545.png" alt="image-20230416191454545" style="zoom:67%;" />
+
+
+
+![image-20230416191629885](README.assets/image-20230416191629885.png)
+
+如果将uuid改为`test_uid_100001_11`这样就可以在生成一个表 user_take_activity.uuid 为 `test_uid_100001_10` 的唯一值,这样就会发生索引冲突回滚，那么扣减了 user_take_activity_count.left_count 次数就会恢复回去。
+
+![image-20230416191854122](README.assets/image-20230416191854122.png)

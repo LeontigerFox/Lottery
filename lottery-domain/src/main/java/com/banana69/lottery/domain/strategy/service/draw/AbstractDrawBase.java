@@ -22,11 +22,10 @@ import java.util.List;
 
 public abstract class AbstractDrawBase extends DrawStrategySupport implements IDrawExec {
 
-    private Logger logger  = LoggerFactory.getLogger(AbstractDrawBase.class);
+    private Logger logger = LoggerFactory.getLogger(AbstractDrawBase.class);
 
     @Override
     public DrawResult doDrawExec(DrawReq req) {
-        // 1. 获取抽奖策略
         // 1. 获取抽奖策略
         StrategyRich strategyRich = super.queryStrategyRich(req.getStrategyId());
         StrategyBriefVO strategy = strategyRich.getStrategy();
@@ -42,12 +41,12 @@ public abstract class AbstractDrawBase extends DrawStrategySupport implements ID
         String awardId = this.drawAlgorithm(req.getStrategyId(), drawAlgorithmGroup.get(strategy.getStrategyMode()), excludeAwardIds);
 
         // 5. 包装中奖结果
-        return buildDrawResult(req.getUId(), req.getStrategyId(), awardId);
-
+        return buildDrawResult(req.getuId(), req.getStrategyId(), awardId, strategy);
     }
 
     /**
-     * 获取不在抽奖范围内的列表，包括：奖品库存为空、风控策略、临时调整等，这类数据是含有业务逻辑的，所以需要由具体地实现方决定
+     * 获取不在抽奖范围内的列表，包括：奖品库存为空、风控策略、临时调整等，这类数据是含有业务逻辑的，所以需要由具体的实现方决定
+     *
      * @param strategyId 策略ID
      * @return 排除的奖品ID集合
      */
@@ -55,8 +54,9 @@ public abstract class AbstractDrawBase extends DrawStrategySupport implements ID
 
     /**
      * 执行抽奖算法
-     * @param strategyId 策略ID
-     * @param drawAlgorithm 抽奖算法模型
+     *
+     * @param strategyId      策略ID
+     * @param drawAlgorithm   抽奖算法模型
      * @param excludeAwardIds 排除的抽奖ID集合
      * @return 中奖奖品ID
      */
@@ -64,21 +64,18 @@ public abstract class AbstractDrawBase extends DrawStrategySupport implements ID
 
     /**
      * 校验抽奖策略是否已经初始化到内存
-     * @param strategyId 抽奖策略ID
-     * @param strategyMode 筹集策略模式
+     *
+     * @param strategyId         抽奖策略ID
+     * @param strategyMode       抽奖策略模式
      * @param strategyDetailList 抽奖策略详情
      */
-    protected void checkAndInitRateData(Long strategyId, Integer strategyMode, List<StrategyDetailBriefVO> strategyDetailList){
+    private void checkAndInitRateData(Long strategyId, Integer strategyMode, List<StrategyDetailBriefVO> strategyDetailList) {
 
-        // 非单项概率， 不必存入缓存
-        if(!Constants.StrategyMode.SINGLE.getCode().equals(strategyMode)){
-            return;
-        }
-
+        // 根据抽奖策略模式，获取对应的抽奖服务
         IDrawAlgorithm drawAlgorithm = drawAlgorithmGroup.get(strategyMode);
 
-        // 已经初始化过的数据，不需要重复初始化
-        if(drawAlgorithm.isExistRateTuple(strategyId)){
+        // 判断已处理过的的数据
+        if (drawAlgorithm.isExist(strategyId)) {
             return;
         }
 
@@ -88,18 +85,19 @@ public abstract class AbstractDrawBase extends DrawStrategySupport implements ID
             awardRateInfoList.add(new AwardRateInfo(strategyDetail.getAwardId(), strategyDetail.getAwardRate()));
         }
 
-        drawAlgorithm.initRateTuple(strategyId, awardRateInfoList);
+        drawAlgorithm.initRateTuple(strategyId, strategyMode, awardRateInfoList);
 
     }
 
     /**
      * 包装抽奖结果
-     * @param uId 用户ID
+     *
+     * @param uId        用户ID
      * @param strategyId 策略ID
-     * @param awardId 奖品ID，null 情况：并发抽奖情况下，库存临界值1 -> 0，会有用户中奖结果为 null
-     * @return
+     * @param awardId    奖品ID，null 情况：并发抽奖情况下，库存临界值1 -> 0，会有用户中奖结果为 null
+     * @return 中奖结果
      */
-    private DrawResult buildDrawResult(String uId, Long strategyId, String awardId) {
+    private DrawResult buildDrawResult(String uId, Long strategyId, String awardId, StrategyBriefVO strategy) {
         if (null == awardId) {
             logger.info("执行策略抽奖完成【未中奖】，用户：{} 策略ID：{}", uId, strategyId);
             return new DrawResult(uId, strategyId, Constants.DrawState.FAIL.getCode());
@@ -107,11 +105,16 @@ public abstract class AbstractDrawBase extends DrawStrategySupport implements ID
 
         AwardBriefVO award = super.queryAwardInfoByAwardId(awardId);
         DrawAwardInfo drawAwardInfo = new DrawAwardInfo(award.getAwardId(), award.getAwardType(), award.getAwardName(), award.getAwardContent());
+        drawAwardInfo.setStrategyMode(strategy.getStrategyMode());
+        drawAwardInfo.setGrantType(strategy.getGrantType());
+        drawAwardInfo.setGrantDate(strategy.getGrantDate());
         logger.info("执行策略抽奖完成【已中奖】，用户：{} 策略ID：{} 奖品ID：{} 奖品名称：{}", uId, strategyId, awardId, award.getAwardName());
 
         return new DrawResult(uId, strategyId, Constants.DrawState.SUCCESS.getCode(), drawAwardInfo);
-
     }
+
+
+
 
 }
 

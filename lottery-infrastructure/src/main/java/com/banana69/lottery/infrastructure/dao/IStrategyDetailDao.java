@@ -26,5 +26,17 @@ public interface IStrategyDetailDao extends BaseMapper<StrategyDetail> {
      */
     int deductStock(StrategyDetail strategyDetailReq);
 
+    /**
+     * 插入策略配置组
+     *
+     * @param req 策略配置组
+     */
     void insertList(List<StrategyDetail> req);
+
+    /**
+     * 查询策略表详细配置
+     * @param strategyId 策略ID
+     * @return           返回结果
+     */
+    List<StrategyDetail> queryStrategyDetailList(Long strategyId);
 }

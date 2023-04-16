@@ -46,4 +46,7 @@ public class DrawResult {
         this.drawState = drawState;
     }
 
+
+
+
 }

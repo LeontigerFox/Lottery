@@ -5,13 +5,15 @@ import com.banana69.lottery.domain.strategy.service.algorithm.BaseAlgorithm;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 必中奖策略抽奖，排掉已经中奖的概率，重新计算中奖范围
- * @author banana69
+ * Created with IntelliJ IDEA.
+
+ * @author: banana69
+ * @date: 2023/4/16/18:28
+ * @description: 必中奖策略抽奖，排掉已经中奖的概率，重新计算中奖范围
  */
 @Component("entiretyRateRandomDrawAlgorithm")
 public class EntiretyRateRandomDrawAlgorithm extends BaseAlgorithm {
@@ -59,6 +61,7 @@ public class EntiretyRateRandomDrawAlgorithm extends BaseAlgorithm {
 
         // 返回中奖结果
         return awardId;
-
     }
+
+
 }

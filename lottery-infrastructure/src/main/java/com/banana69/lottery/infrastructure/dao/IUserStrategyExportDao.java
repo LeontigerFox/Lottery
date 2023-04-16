@@ -29,7 +29,7 @@ public interface IUserStrategyExportDao extends BaseMapper<UserStrategyExport> {
      * @param uId 用户ID
      * @return 用户策略
      */
-    @DBRouter(key = "uId")
+    @DBRouter
     UserStrategyExport queryUserStrategyExportByUId(String uId);
 
 }

@@ -2,6 +2,7 @@ package com.banana69.lottery.domain.activity.model.res;
 
 import com.banana69.lottery.common.Result;
 
+
 /**
  * Created with IntelliJ IDEA.
  *
@@ -15,6 +16,12 @@ public class PartakeResult  extends Result {
      */
     private Long strategyId;
 
+    /**
+     * 活动领取ID
+     */
+    private Long takeId;
+
+
     public PartakeResult(String code, String info) {
         super(code, info);
     }
@@ -26,5 +33,16 @@ public class PartakeResult  extends Result {
     public void setStrategyId(Long strategyId) {
         this.strategyId = strategyId;
     }
+
+    public Long getTakeId() {
+        return takeId;
+    }
+
+    public void setTakeId(Long takeId) {
+        this.takeId = takeId;
+    }
+
+
+
 
 }

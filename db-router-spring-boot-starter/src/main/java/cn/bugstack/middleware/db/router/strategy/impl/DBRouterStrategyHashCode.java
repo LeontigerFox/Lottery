@@ -24,6 +24,7 @@ public class DBRouterStrategyHashCode implements IDBRouterStrategy {
         this.dbRouterConfig = dbRouterConfig;
     }
 
+
     @Override
     public void doRouter(String dbKeyAttr) {
         int size = dbRouterConfig.getDbCount() * dbRouterConfig.getTbCount();
@@ -46,9 +47,30 @@ public class DBRouterStrategyHashCode implements IDBRouterStrategy {
 
 
     @Override
+    public void setDBKey(int dbIdx) {
+        DBContextHolder.setDBKey(String.format("%02d", dbIdx));
+    }
+
+    @Override
+    public void setTBKey(int tbIdx) {
+        DBContextHolder.setTBKey(String.format("%03d", tbIdx));
+    }
+
+    @Override
+    public int dbCount() {
+        return dbRouterConfig.getDbCount();
+    }
+
+    @Override
+    public int tbCount() {
+        return dbRouterConfig.getTbCount();
+    }
+
+    @Override
     public void clear(){
         DBContextHolder.clearDBKey();
         DBContextHolder.clearTBKey();
     }
+
 
 }

@@ -1,5 +1,6 @@
 package com.banana69.lottery.test.domain;
 
+import com.banana69.lottery.common.Constants;
 import com.banana69.lottery.domain.strategy.model.vo.AwardRateInfo;
 import com.banana69.lottery.domain.strategy.service.algorithm.IDrawAlgorithm;
 import org.junit.Before;
@@ -24,8 +25,8 @@ import java.util.List;
 @SpringBootTest
 public class DrawAlgorithmTest {
 
-    //    @Resource(name = "entiretyRateRandomDrawAlgorithm")
-    @Resource(name = "singleRateRandomDrawAlgorithm")
+        @Resource(name = "entiretyRateRandomDrawAlgorithm")
+    //@Resource(name = "singleRateRandomDrawAlgorithm")
     private IDrawAlgorithm randomDrawAlgorithm;
 
     @Before
@@ -39,7 +40,7 @@ public class DrawAlgorithmTest {
         strategyList.add(new AwardRateInfo("五等奖：充电宝", new BigDecimal("0.35")));
 
         // 初始数据
-        randomDrawAlgorithm.initRateTuple(100001L, strategyList);
+        randomDrawAlgorithm.initRateTuple(100001L, Constants.StrategyMode.ENTIRETY.getCode(), strategyList);
     }
 
     @Test
@@ -49,7 +50,7 @@ public class DrawAlgorithmTest {
         excludeAwardIds.add("二等奖：iphone");
         excludeAwardIds.add("四等奖：AirPods");
 
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 10; i++) {
             System.out.println("中奖结果：" + randomDrawAlgorithm.randomDraw(100001L, excludeAwardIds));
         }
 

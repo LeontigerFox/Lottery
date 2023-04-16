@@ -1,7 +1,9 @@
 package com.banana69.lottery.domain.activity.service.partake;
 
+import com.banana69.lottery.common.Result;
 import com.banana69.lottery.domain.activity.model.req.PartakeReq;
 import com.banana69.lottery.domain.activity.model.res.PartakeResult;
+import com.banana69.lottery.domain.activity.model.vo.DrawOrderVO;
 
 /**
  * Created with IntelliJ IDEA.
@@ -18,6 +20,14 @@ public interface IActivityPartake {
      * @return    领取结果
      */
     PartakeResult doPartake(PartakeReq req);
+
+    /**
+     * 保存奖品单
+     * @param drawOrder 奖品单
+     * @return          保存结果
+     */
+    Result recordDrawOrder(DrawOrderVO drawOrder);
+
 
 
 }

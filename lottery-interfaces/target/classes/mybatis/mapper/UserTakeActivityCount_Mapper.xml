@@ -25,7 +25,6 @@
         SELECT total_count, left_count
         FROM user_take_activity_count
         WHERE u_id = #{uId} AND activity_id = #{activityId}
-
     </select>
 
 

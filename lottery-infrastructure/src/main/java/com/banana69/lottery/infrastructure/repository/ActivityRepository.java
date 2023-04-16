@@ -8,7 +8,6 @@ import com.banana69.lottery.domain.activity.respository.IActivityRepository;
 import com.banana69.lottery.infrastructure.dao.*;
 import com.banana69.lottery.infrastructure.po.*;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 
@@ -87,19 +86,21 @@ public class ActivityRepository implements IActivityRepository {
 
     @Override
     public ActivityBillVO queryActivityBill(PartakeReq req) {
+
+        LambdaQueryWrapper<Activity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Activity::getActivityId,req.getActivityId());
+
         // 查询活动信息
-        Activity activity = activityDao.queryActivityById(req.getActivityId());
+        //Activity activity = activityDao.queryActivityById(req.getActivityId());
+        Activity activity = activityDao.selectOne(wrapper);
 
         // 查询领取次数
         UserTakeActivityCount userTakeActivityCountReq = new UserTakeActivityCount();
         userTakeActivityCountReq.setuId(req.getuId());
         userTakeActivityCountReq.setActivityId(req.getActivityId());
-
-        //LambdaQueryWrapper<UserTakeActivityCount> wrapper = new LambdaQueryWrapper<>();
-        //wrapper.eq(UserTakeActivityCount::getuId,userTakeActivityCountReq.getuId());
-        //wrapper.eq(UserTakeActivityCount::getActivityId,userTakeActivityCountReq.getActivityId());
-
         UserTakeActivityCount userTakeActivityCount = userTakeActivityCountDao.queryUserTakeActivityCount(userTakeActivityCountReq);
+
+
 
         // 封装结果信息
         ActivityBillVO activityBillVO = new ActivityBillVO();

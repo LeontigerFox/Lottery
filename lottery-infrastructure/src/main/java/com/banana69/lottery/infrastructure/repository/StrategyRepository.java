@@ -42,25 +42,27 @@ public class StrategyRepository implements IStrategyRepository {
     @Override
     public StrategyRich queryStrategyRich(Long strategyId) {
         Strategy strategy = strategyDao.selectOne(new QueryWrapper<Strategy>().eq("strategy_id",strategyId));
-        List<StrategyDetail> strategyDetailList = strategyDetailDao.selectBatchIds(Collections.singleton(strategyId));
+        List<StrategyDetail> strategyDetailList = strategyDetailDao.queryStrategyDetailList(strategyId);
+
 
         StrategyBriefVO strategyBriefVO = new StrategyBriefVO();
         BeanUtils.copyProperties(strategy, strategyBriefVO);
 
         List<StrategyDetailBriefVO> strategyDetailBriefVOList = new ArrayList<>();
-        for(StrategyDetail strategyDetail: strategyDetailList){
+        for (StrategyDetail strategyDetail : strategyDetailList) {
             StrategyDetailBriefVO strategyDetailBriefVO = new StrategyDetailBriefVO();
             BeanUtils.copyProperties(strategyDetail, strategyDetailBriefVO);
             strategyDetailBriefVOList.add(strategyDetailBriefVO);
         }
 
         return new StrategyRich(strategyId, strategyBriefVO, strategyDetailBriefVOList);
+
     }
 
     @Override
     public AwardBriefVO queryAwardInfo(String awardId) {
 
-        Award award = awardDao.selectById(new QueryWrapper<Award>().eq("award_id", awardId));
+        Award award = awardDao.selectOne(new QueryWrapper<Award>().eq("award_id", awardId));
 
         // 可以使用 BeanUtils.copyProperties(award, awardBriefVO)、或者基于ASM实现的Bean-Mapping，但在效率上最好的依旧是硬编码
         AwardBriefVO awardBriefVO = new AwardBriefVO();

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="LeetcodeEditor">
+    <option name="projectConfig">
+      <map>
+        <entry key="$USER_HOME$/java/leetcode-idea/leetcode/editor/cn/[剑指 Offer 38]字符串的排列.java">
+          <value>
+            <LeetcodeEditor>
+              <option name="contentPath" value="$USER_HOME$/java/leetcode-idea/leetcode/editor/cn/doc/content/[剑指 Offer 38]字符串的排列.md" />
+              <option name="frontendQuestionId" value="leetcode.cn剑指 Offer 38" />
+              <option name="host" value="leetcode.cn" />
+              <option name="path" value="$USER_HOME$/java/leetcode-idea/leetcode/editor/cn/[剑指 Offer 38]字符串的排列.java" />
+              <option name="titleSlug" value="zi-fu-chuan-de-pai-lie-lcof" />
+            </LeetcodeEditor>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

@@ -47,5 +47,11 @@
         FROM strategy_detail
         WHERE strategy_id = #{strategyId} AND award_surplus_count = 0
     </select>
+    <select id="queryStrategyDetailList" resultType="com.banana69.lottery.infrastructure.po.StrategyDetail" resultMap="strategyDetailMap">
+        SELECT id, strategy_id, award_id, award_count, award_surplus_count,
+        award_rate, create_time, update_time
+        FROM strategy_detail
+        WHERE strategy_id = #{strategyId}
+    </select>
 
 </mapper>

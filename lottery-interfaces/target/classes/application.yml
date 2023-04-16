@@ -39,6 +39,7 @@ mybatis-plus:
   mapper-locations: classpath:/mybatis/mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 dubbo:
   application:
