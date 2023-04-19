@@ -3,7 +3,7 @@
 <mapper namespace="com.banana69.lotteryERP.interfaces.sys.mapper.UserMapper">
 
 
-    <select id="getRoleNameByUserId" parameterType="Integer" resultType="String">
+    <select id="getRoleNameByUserId" parameterType="Long" resultType="String">
         SELECT
             b.`role_name`
         FROM t_user_role a, t_role b

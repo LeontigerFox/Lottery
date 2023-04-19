@@ -2694,3 +2694,71 @@ public DrawProcessResult doDrawProcess(DrawProcessReq req) {
 如果将uuid改为`test_uid_100001_11`这样就可以在生成一个表 user_take_activity.uuid 为 `test_uid_100001_10` 的唯一值,这样就会发生索引冲突回滚，那么扣减了 user_take_activity_count.left_count 次数就会恢复回去。
 
 ![image-20230416191854122](README.assets/image-20230416191854122.png)
+
+
+
+## 13. 规则引擎量化人群参与活动
+
+描述：使用组合模式搭建用于量化人群的规则引擎，用于用户参与活动之前，通过规则引擎过滤性别、年龄、首单消费、消费金额、忠实用户等各类身份来量化出具体可参与的抽奖活动。通过这样的方式控制运营成本和精细化运营。
+
+
+
+### 13.1 库表设计
+
+组合模式的特点就像是搭建出一颗二叉树，而库表中则需要把这样一颗二叉树村放进去，那么这里就需要包括：树根、树茎、子叶、果实、在具体包含的逻辑实现中则需要通过子叶判断走哪个树茎以及最终筛选出一个果实来。
+
+**rule_tree**
+
+```sql
+CREATE TABLE `rule_tree` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `tree_name` varchar(64) DEFAULT NULL COMMENT '规则树NAME',
+  `tree_desc` varchar(128) DEFAULT NULL COMMENT '规则树描述',
+  `tree_root_node_id` bigint(20) DEFAULT NULL COMMENT '规则树根ID',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=10002 DEFAULT CHARSET=utf8;
+
+```
+
+**rule_tree_node**
+
+```sql
+CREATE TABLE `rule_tree_node` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `tree_id` int(2) DEFAULT NULL COMMENT '规则树ID',
+  `node_type` int(2) DEFAULT NULL COMMENT '节点类型；1子叶、2果实',
+  `node_value` varchar(32) DEFAULT NULL COMMENT '节点值[nodeType=2]；果实值',
+  `rule_key` varchar(16) DEFAULT NULL COMMENT '规则Key',
+  `rule_desc` varchar(32) DEFAULT NULL COMMENT '规则描述',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=123 DEFAULT CHARSET=utf8;
+
+```
+
+**rule_tree_node_line**
+
+```sql
+CREATE TABLE `rule_tree_node_line` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `tree_id` bigint(20) DEFAULT NULL COMMENT '规则树ID',
+  `node_id_from` bigint(20) DEFAULT NULL COMMENT '节点From',
+  `node_id_to` bigint(20) DEFAULT NULL COMMENT '节点To',
+  `rule_limit_type` int(2) DEFAULT NULL COMMENT '限定类型；1:=;2:>;3:<;4:>=;5<=;6:enum[枚举范围];7:果实',
+  `rule_limit_value` varchar(32) DEFAULT NULL COMMENT '限定值',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8;
+
+```
+
+
+
+### 13.2  应用场景
+
+<img src="README.assets/image-20230418123945108.png" alt="image-20230418123945108" style="zoom:50%;" />
+
+- 基于量化决策引擎，筛选用户身份，找到符合参与的活动号，拿到活动号后，参与到具体的抽奖活动中
+- 通常量化决策引擎也是一种用于差异化人群的规则过滤器，不只是可以过滤出活动，也可以用于活动纬度的的过滤，判断是否可以参与到这个抽奖活动中。
+- 该抽奖系统会使用规则运气领域服务，在应用层做一层封装后，由接口进行调用使用，即用户参与活动之前，要做一层规则引擎过滤。
+

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ApifoxUploaderProjectSetting">
+    <option name="apifoxAccessToken" value="APS-6ZK44NgBkc8pg3A78H1ipwp6H6F3wdAQ" />
+    <option name="apifoxApiOverwriteMode" value="覆盖所有字段" />
+    <option name="apifoxProjectIds">
+      <array>
+        <option value="# ModuleName:ProjectID" />
+        <option value="lottery-erp:2607081" />
+      </array>
+    </option>
+    <option name="yapiTokens" value="" />
+  </component>
+</project>

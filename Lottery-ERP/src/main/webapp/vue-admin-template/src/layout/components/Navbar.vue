@@ -52,8 +52,11 @@ export default {
       this.$store.dispatch('app/toggleSideBar')
     },
     async logout () {
+      // 注销时删除所有tagview
+      await this.$store.dispatch('tagsView/delAllViews')
+      sessionStorage.removeItem('tabViews')
       await this.$store.dispatch('user/logout')
-      this.$router.push(`/login?redirect=${this.$route.fullPath}`)
+      this.$router.push(`/login`)
     }
   }
 }

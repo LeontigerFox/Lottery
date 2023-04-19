@@ -1,13 +1,18 @@
 package com.banana69.lotteryERP.interfaces.sys.service.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.banana69.lotteryERP.infrastrusture.common.EasyResult;
 import com.banana69.lotteryERP.interfaces.sys.entity.User;
 import com.banana69.lotteryERP.interfaces.sys.mapper.UserMapper;
 import com.banana69.lotteryERP.interfaces.sys.service.IUserService;
+import com.banana69.lotteryERP.utils.JwtUtil;
+import com.banana69.lotteryERP.utils.SHACoder;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,29 +35,54 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Autowired
     private RedisTemplate redisTemplate;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @Override
     public Map<String, Object> login(User user) {
 
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(User::getUsername,user.getUsername());
-        wrapper.eq(User::getPassword,user.getPassword());
-
-        // 根据用户名和密码进行查询
+        // 根据用户名进行查询
         User loginUser = this.baseMapper.selectOne(wrapper);
-        if(loginUser != null){
+
+        if(loginUser != null && passwordEncoder.matches(user.getPassword(), loginUser.getPassword())){
             // 结果不为空，生成 token，并将用户信息存入redis
-            // 暂时使用 uuid
-            String key = "user:" + UUID.randomUUID();
+            //// 暂时使用 uuid
+            //String key = "user:" + UUID.randomUUID();
+
+            String token = jwtUtil.createToken(loginUser);
+
 
             // 存入 redis
             loginUser.setPassword(null);
-            redisTemplate.opsForValue().set(key,loginUser,300, TimeUnit.MINUTES);
+            redisTemplate.opsForValue().set(token,loginUser,300, TimeUnit.MINUTES);
 
 
             Map<String,Object> data = new ConcurrentHashMap<>();
-            data.put("token",key);
+            data.put("token",token);
             return data;
         }
+
+        //// 根据用户名和密码进行查询
+        //User loginUser = this.baseMapper.selectOne(wrapper);
+        //if(loginUser != null){
+        //    // 结果不为空，生成 token，并将用户信息存入redis
+        //    // 暂时使用 uuid
+        //    String key = "user:" + UUID.randomUUID();
+        //
+        //    // 存入 redis
+        //    loginUser.setPassword(null);
+        //    redisTemplate.opsForValue().set(key,loginUser,300, TimeUnit.MINUTES);
+        //
+        //
+        //    Map<String,Object> data = new ConcurrentHashMap<>();
+        //    data.put("token",key);
+        //    return data;
+        //}
 
         return null;
     }
@@ -61,15 +91,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     public Map<String, Object> getUserInfo(String token) {
 
         Object obj = redisTemplate.opsForValue().get(token);
-        if(obj != null){
-            User loginUser = JSON.parseObject(JSON.toJSONString(obj), User.class);
+        User loginUser = null;
+        try {
+            loginUser = jwtUtil.parseToken(token, User.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if(loginUser != null){
             Map<String,Object> data = new ConcurrentHashMap<>();
-
-            // 关联查询 查出 角色
-
-
             data.put("name",loginUser.getUsername());
-            data.put("avatar",loginUser.getAvatar());
+            data.put("avatar", StringUtils.isEmpty(loginUser.getAvatar()) ? null : loginUser.getAvatar());
+
 
             List<String> roleList = this.baseMapper.getRoleNameByUserId(loginUser.getId());
             data.put("roles",roleList);
@@ -83,5 +115,27 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public void logout(String token) {
         redisTemplate.delete(token);
+    }
+
+    @Override
+    public EasyResult<?> addUser(User user) {
+        try {
+            User addUser = query().eq("uid", SHACoder.encodeSHA256Hex(user.getUsername())).one();
+            if(addUser != null){
+                return EasyResult.fail("添加失败，该用户已存在");
+            }else {
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
+                user.setUid(SHACoder.encodeSHA256Hex(user.getUsername()));
+                this.save(user);
+                return EasyResult.success(user);
+
+            }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+        return EasyResult.fail("添加用户异常");
     }
 }
