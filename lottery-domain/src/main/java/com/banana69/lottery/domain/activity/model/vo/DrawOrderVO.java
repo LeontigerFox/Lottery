@@ -62,8 +62,6 @@ public class DrawOrderVO {
      * 奖品类型（1:文字描述、2:兑换码、3:优惠券、4:实物奖品）
      */
     private Integer awardType;
-
-
     /**
      * 奖品名称
      */
@@ -72,6 +70,7 @@ public class DrawOrderVO {
      * 奖品内容「文字描述、Key、码」
      */
     private String awardContent;
+
 
     public String getuId() {
         return uId;

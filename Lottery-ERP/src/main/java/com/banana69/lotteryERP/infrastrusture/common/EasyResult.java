@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.HashMap;
+
 
 /**
  * Created with IntelliJ IDEA.
@@ -15,7 +17,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class EasyResult<T> {
+public class EasyResult<T>  {
+    //extends HashMap<String, Object>
 
     private Integer code;
     private String message;
@@ -53,6 +56,11 @@ public class EasyResult<T> {
         return new EasyResult<>(20001,message,null);
     }
 
+//    @Override
+//    public EasyResult<T> put(String key, Object value) {
+//        super.put(key, value);
+//        return this;
+//    }
 
 
 }

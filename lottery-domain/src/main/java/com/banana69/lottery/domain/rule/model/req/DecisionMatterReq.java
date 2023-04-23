@@ -18,11 +18,27 @@ import java.util.Map;
 @NoArgsConstructor
 public class DecisionMatterReq {
 
-    /** 规则树ID */
+    /**
+     * 规则树ID
+     */
     private Long treeId;
-    /** 用户ID */
+    /**
+     * 用户ID
+     */
     private String userId;
-    /** 决策值 */
+    /**
+     * 决策值
+     */
     private Map<String, Object> valMap;
+
+
+    public DecisionMatterReq(String userId, Long treeId, Map<String, Object> valMap) {
+        this.userId = userId;
+        this.treeId = treeId;
+        this.valMap = valMap;
+    }
+
+
+
 
 }

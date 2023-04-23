@@ -1,18 +1,20 @@
 package com.banana69.lotteryERP.interfaces.sys.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.banana69.lotteryERP.infrastrusture.common.EasyResult;
-import com.banana69.lotteryERP.interfaces.sys.entity.User;
+import com.banana69.lotteryERP.interfaces.sys.entity.SysUser;
 import com.banana69.lotteryERP.interfaces.sys.service.IUserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,19 +44,21 @@ public class UserController {
      * @return
      */
     @GetMapping("/all")
-    public EasyResult<List<User>> getAllUsers() {
-        List<User> list = userService.list();
+    public EasyResult<List<SysUser>> getAllUsers() {
+        List<SysUser> list = userService.list();
         return  EasyResult.success(list);
     }
 
     /**
      * 登陆接口
-     * @param user
+     * @param sysUser
      * @return
      */
     @PostMapping("/login")
-    public EasyResult<Map<String,Object>> login(@RequestBody User user) {
-        Map<String,Object> data = userService.login(user);
+    public EasyResult<Map<String,Object>> login(@RequestBody SysUser sysUser) {
+        log.warn("开始登陆");
+        Map<String,Object> data = userService.login(sysUser);
+
 
         if(data != null){
             return EasyResult.success(data);
@@ -64,13 +68,12 @@ public class UserController {
 
     /**
      * 查询用户信息
-     * @param token
      * @return
      */
     @GetMapping("/info")
-    public EasyResult<Map<String,Object>> getUserInfo(@RequestParam(value = "token", required = false) String token){
+    public EasyResult<?> getUserInfo(HttpServletRequest request){
         // 根据token获取用户信息，redis
-        Map<String,Object> data = userService.getUserInfo(token);
+        SysUser data = userService.getUserInfo(request);
         if(data != null){
             return EasyResult.success(data);
         }
@@ -79,13 +82,11 @@ public class UserController {
 
     /**
      * 注销
-     * @param token
      * @return
      */
     @PostMapping("/logout")
-    public EasyResult<?> logout(@RequestHeader("X-Token") String token){
-        userService.logout(token);
-        return EasyResult.success();
+    public EasyResult<?> logout(HttpServletRequest request){
+        return userService.logout(request);
     }
 
     /**
@@ -101,12 +102,12 @@ public class UserController {
                                                    @RequestParam(value = "phone",required = false) String phone,
                                                    @RequestParam(value = "pageNo",required = false) Long pageNo,
                                                    @RequestParam(value = "pageSize",required = false) Long pageSize){
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StringUtils.checkValNotNull(username),User::getUsername, username);
-        wrapper.eq(StringUtils.checkValNotNull(phone),User::getPhone, phone);
-        wrapper.orderByAsc(User::getId);
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(StringUtils.checkValNotNull(username), SysUser::getUsername, username);
+        wrapper.eq(StringUtils.checkValNotNull(phone), SysUser::getPhone, phone);
+        wrapper.orderByAsc(SysUser::getId);
 
-        Page<User> page = new Page<>(pageNo,pageSize);
+        Page<SysUser> page = new Page<>(pageNo,pageSize);
         userService.page(page,wrapper);
 
         Map<String, Object> data = new ConcurrentHashMap<>();
@@ -118,34 +119,33 @@ public class UserController {
 
     /**
      * 新增用户
-     * @param user
+     * @param sysUser
      * @return
      */
     @PostMapping("/addUser")
-    public EasyResult<?> addUser(@RequestBody User user) {
-       return userService.addUser(user);
+    @Transactional
+    @PreAuthorize("hasAnyAuthority('system:super:list')")
+    public EasyResult<?> addUser(@RequestBody SysUser sysUser) {
+        log.info("添加用户：" + sysUser);
+       return userService.addUser(sysUser);
     }
 
     @PutMapping
-    public  EasyResult<?> updateUer(@RequestBody User user){
-        userService.updateById(user);
+    public  EasyResult<?> updateUer(@RequestBody SysUser sysUser){
+        userService.updateUser(sysUser);
         return EasyResult.success("修改用户成功");
     }
 
     @GetMapping("/{id}")
-    public EasyResult<User> getUserById(@PathVariable("id") Long id){
+    public EasyResult<SysUser> getUserById(@PathVariable("id") Long id){
         System.out.println(id);
-        User user = userService.getById(id);
-
-        User frontUser = new User();
-        BeanUtil.copyProperties(user, frontUser, "password");
-
-        return  EasyResult.success(frontUser);
+        SysUser sysUser = userService.getUserById(id);
+        return  EasyResult.success(sysUser);
     }
 
     @DeleteMapping("{id}")
-    public  EasyResult<User> deleteUser(@PathVariable("id") Long id){
-        userService.removeById(id);
+    public  EasyResult<SysUser> deleteUser(@PathVariable("id") Long id){
+        userService.deleteUserById(id);
         return EasyResult.success("删除用户成功");
     }
 

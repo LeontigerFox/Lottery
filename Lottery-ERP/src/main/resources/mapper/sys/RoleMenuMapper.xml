@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.banana69.lottery-erp.sys.mapper.RoleMenuMapper">
+<mapper namespace="com.banana69.lotteryERP.interfaces.sys.mapper.RoleMenuMapper">
 
+    <!--<select id="getMenuIdListByRoleId" resultType="java.lang.Integer">-->
+    <!--    SELECT-->
+    <!--        a.`menu_id`-->
+    <!--    FROM t_role_menu a, t_menu b-->
+    <!--    WHERE a.`menu_id` = b.`menu_id`-->
+    <!--      AND b.`is_leaf` = 'Y'-->
+    <!--      AND a.`role_id` = #{roleId}-->
+    <!--</select>-->
+    <select id="getMenuIdListByRoleId" resultType="java.lang.Integer">
+
+    </select>
 </mapper>

@@ -1,12 +1,11 @@
 package com.banana69.lotteryERP.com.banana69;
 
-import com.banana69.lotteryERP.interfaces.sys.entity.User;
+import com.banana69.lotteryERP.interfaces.sys.entity.SysUser;
 import com.banana69.lotteryERP.interfaces.sys.mapper.UserMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,7 +23,7 @@ public class AdminTest {
 
     @Test
     void testMapper() {
-        List<User> users = userMapper.selectList(null);
-        users.forEach(System.out::println);
+        List<SysUser> SysUsers = userMapper.selectList(null);
+        SysUsers.forEach(System.out::println);
     }
 }

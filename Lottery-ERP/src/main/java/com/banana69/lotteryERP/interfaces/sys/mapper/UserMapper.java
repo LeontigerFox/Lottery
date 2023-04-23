@@ -1,8 +1,7 @@
 package com.banana69.lotteryERP.interfaces.sys.mapper;
 
-import com.banana69.lotteryERP.interfaces.sys.entity.User;
+import com.banana69.lotteryERP.interfaces.sys.entity.SysUser;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;
 
@@ -14,7 +13,7 @@ import java.util.List;
  * @author banana69
  * @since 2023-04-14
  */
-public interface UserMapper extends BaseMapper<User> {
+public interface UserMapper extends BaseMapper<SysUser> {
 
-    public List<String> getRoleNameByUserId(Long userId);
+     List<String> getRoleNameByUserId(Long userId);
 }

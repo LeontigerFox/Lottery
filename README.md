@@ -2257,7 +2257,7 @@ public interface IUserStrategyExportDao {
 }
 ```
 
-- @DBRouterStrategy(splitTable = true) 配置分表信息，配置后会通过数据库路由组件把sql语句添加上分表字段，比如表 user 修改为 user_003
+- @DBRouterStrategy(splitTable = true) 配置分表信息，配置后会通过数据库路由组件把sql语句添加上分表字段，比如表 sysUser 修改为 user_003
 - @DBRouter(key = "uId") 设置路由字段
 - @DBRouter 未配置情况下走默认字段，routerKey: uId
 
@@ -2761,4 +2761,370 @@ CREATE TABLE `rule_tree_node_line` (
 - 基于量化决策引擎，筛选用户身份，找到符合参与的活动号，拿到活动号后，参与到具体的抽奖活动中
 - 通常量化决策引擎也是一种用于差异化人群的规则过滤器，不只是可以过滤出活动，也可以用于活动纬度的的过滤，判断是否可以参与到这个抽奖活动中。
 - 该抽奖系统会使用规则运气领域服务，在应用层做一层封装后，由接口进行调用使用，即用户参与活动之前，要做一层规则引擎过滤。
+
+
+
+### 13.2 功能开发
+
+#### 13.2.1 工程结构
+
+<img src="README.assets/image-20230419144228438.png" alt="image-20230419144228438" style="zoom:50%;" />
+
+
+
+![image-20230419144259999](README.assets/image-20230419144259999.png)
+
+- `1`、`11`、`12`、`111`、`112`、`121`、`122`，这是一组树结构的ID，并由节点串联组合出一棵关系树。
+
+- 接下来是类图部分，左侧是从`LogicFilter`开始定义适配的决策过滤器，`BaseLogic`是对接口的实现，提供最基本的通用方法。
+
+  `UserAgeFilter`,`UserGenerFilter`是两个具体的实现类用于判断年龄和性别。
+
+- 最后则是对这颗可以被组织出来的决策树，进行执行的引擎。同样定义了引擎接口和基础的配置，在配置里面设定了需要的模式决策节点
+
+
+
+#### 13.2.2 规则过滤器接口
+
+```java
+public interface LogicFilter {
+
+    /**
+     * 逻辑决策器
+     * @param matterValue          决策值
+     * @param treeNodeLineInfoList 决策节点
+     * @return                     下一个节点Id
+     */
+    Long filter(String matterValue, List<TreeNodeLineVO> treeNodeLineInfoList);
+
+    /**
+     * 获取决策值
+     *
+     * @param decisionMatter 决策物料
+     * @return               决策值
+     */
+    String matterValue(DecisionMatterReq decisionMatter);
+
+}
+```
+
+- 这一部分定义了适配的通用接口，逻辑决策器、获取决策值，让每一个提供决策能力的节点都必须实现此接口，保证统一性。
+
+#### 13.2.3 规则基础抽奖类
+
+```java
+public abstract class BaseLogic implements LogicFilter {
+
+    @Override
+    public Long filter(String matterValue, List<TreeNodeLineVO> treeNodeLineInfoList) {
+        for (TreeNodeLineVO nodeLine : treeNodeLineInfoList) {
+            if (decisionLogic(matterValue, nodeLine)) {
+                return nodeLine.getNodeIdTo();
+            }
+        }
+        return Constants.Global.TREE_NULL_NODE;
+    }
+
+    /**
+     * 获取规则比对值
+     * @param decisionMatter 决策物料
+     * @return 比对值
+     */
+    @Override
+    public abstract String matterValue(DecisionMatterReq decisionMatter);
+
+    private boolean decisionLogic(String matterValue, TreeNodeLineVO nodeLine) {
+        switch (nodeLine.getRuleLimitType()) {
+            case Constants.RuleLimitType.EQUAL:
+                return matterValue.equals(nodeLine.getRuleLimitValue());
+            case Constants.RuleLimitType.GT:
+                return Double.parseDouble(matterValue) > Double.parseDouble(nodeLine.getRuleLimitValue());
+            case Constants.RuleLimitType.LT:
+                return Double.parseDouble(matterValue) < Double.parseDouble(nodeLine.getRuleLimitValue());
+            case Constants.RuleLimitType.GE:
+                return Double.parseDouble(matterValue) >= Double.parseDouble(nodeLine.getRuleLimitValue());
+            case Constants.RuleLimitType.LE:
+                return Double.parseDouble(matterValue) <= Double.parseDouble(nodeLine.getRuleLimitValue());
+            default:
+                return false;
+        }
+    }
+
+}
+```
+
+- 在抽象方法中实现了接口方法，同时定义了基本的决策方法；`1、2、3、4、5`，`等于、小于、大于、小于等于、大于等于`的判断逻辑。
+- 同时定义了抽象方法，让每一个实现接口的类都必须按照规则提供`决策值`，这个决策值用于做逻辑比对。
+
+#### 13.3.4 
+
+**年龄规则**
+
+```java
+@Component
+public class UserAgeFilter extends BaseLogic {
+
+    @Override
+    public String matterValue(DecisionMatterReq decisionMatter) {
+        return decisionMatter.getValMap().get("age").toString();
+    }
+
+}
+```
+
+**性别规则**
+
+```java
+@Component
+public class UserGenderFilter extends BaseLogic {
+
+    @Override
+    public String matterValue(DecisionMatterReq decisionMatter) {
+        return decisionMatter.getValMap().get("gender").toString();
+    }
+    
+}
+```
+
+
+
+#### 13.3.5 规则引擎基础类
+
+```java
+public class EngineBase extends EngineConfig implements EngineFilter {
+
+    private Logger logger = LoggerFactory.getLogger(EngineBase.class);
+
+    @Override
+    public EngineResult process(DecisionMatterReq matter) {
+        throw new RuntimeException("未实现规则引擎服务");
+    }
+
+    protected TreeNodeVO engineDecisionMaker(TreeRuleRich treeRuleRich, DecisionMatterReq matter) {
+        TreeRootVO treeRoot = treeRuleRich.getTreeRoot();
+        Map<Long, TreeNodeVO> treeNodeMap = treeRuleRich.getTreeNodeMap();
+
+        // 规则树根ID
+        Long rootNodeId = treeRoot.getTreeRootNodeId();
+        TreeNodeVO treeNodeInfo = treeNodeMap.get(rootNodeId);
+
+        // 节点类型[NodeType]；1子叶、2果实
+        while (Constants.NodeType.STEM.equals(treeNodeInfo.getNodeType())) {
+            String ruleKey = treeNodeInfo.getRuleKey();
+            LogicFilter logicFilter = logicFilterMap.get(ruleKey);
+            String matterValue = logicFilter.matterValue(matter);
+            Long nextNode = logicFilter.filter(matterValue, treeNodeInfo.getTreeNodeLineInfoList());
+            treeNodeInfo = treeNodeMap.get(nextNode);
+            logger.info("决策树引擎=>{} userId：{} treeId：{} treeNode：{} ruleKey：{} matterValue：{}", treeRoot.getTreeName(), matter.getUserId(), matter.getTreeId(), treeNodeInfo.getTreeNodeId(), ruleKey, matterValue);
+        }
+
+        return treeNodeInfo;
+    }
+
+}
+```
+
+- 这里主要提供决策树流程的处理过程，有点像通过链路的关系(`性别`、`年龄`)在二叉树中寻找果实节点的过程。
+- 同时提供一个抽象方法，执行决策流程的方法供外部去做具体的实现。
+
+#### 13.3.6 规则引擎处理器
+
+
+
+### 13.4 测试验证
+
+```java
+ @RunWith(SpringRunner.class)
+@SpringBootTest
+public class RuleTest {
+
+    private Logger logger = LoggerFactory.getLogger(ActivityTest.class);
+
+    @Resource
+    private EngineFilter engineFilter;
+
+    @Test
+    public void test_process() {
+        DecisionMatterReq req = new DecisionMatterReq();
+        req.setTreeId(2110081902L);
+        req.setUserId("fustack");
+        req.setValMap(new HashMap<String, Object>() {{
+            put("gender", "man");
+            put("age", "25");
+        }});
+
+        EngineResult res = engineFilter.process(req);
+
+        logger.info("请求参数：{}", JSON.toJSONString(req));
+        logger.info("测试结果：{}", JSON.toJSONString(res));
+    }
+
+}
+
+```
+
+![image-20230419150337579](README.assets/image-20230419150337579.png)
+
+通过测试结果找到 `"nodeValue":"100002"` 这个 100002 就是用户 `fustack` 可以参与的活动号。
+
+
+
+## 14. 门面接口封装和对象转换
+
+描述：在 lottery-interfaces 接口层创建 `facade 门面模式` 包装抽奖接口，并在 `assembler 包` 使用 MapStruct 做对象转换操作处理。
+
+### 14.1 开发日志
+
+- 补充 lottery-application 应用层对规则引擎的调用，添加接口方法 IActivityProcess#doRuleQuantificationCrowd
+- 删掉 lottery-rpc 测试内容，新增加抽奖活动展台接口 ILotteryActivityBooth，并添加两个抽奖的接口方法，普通抽奖和量化人群抽奖。
+- 开发 lottery-interfaces 接口层，对抽奖活动的封装，并对外提供抽奖服务。
+
+
+
+### 14.2 对象转换
+
+背景：以DDD设计的结构框架，在接口层和应用层需要做防污处理，也就是说不能直接把应用层，领域层的对象直接暴露处理，因为暴露出去可能会随着业务发展的过程中不断的添加各类字段，从而破坏领域结构。那么就只需要增加一层对象转换，即`vo2dto`,`dto2vo`的操作。但这些转换的字段又基本是重复的，在保证性能的情况下，一些高并发场景就只会选择手动便携get，set，但其实也有很多其他的方式，转换性能也不差。
+
+**在 Java 系统工程开发过程中，都会有各个层之间的对象转换，比如 VO、DTO、PO、VO 等，而如果都是手动get、set又太浪费时间，还可能操作错误，选择一个自动化工具会更加方便。目前市面上有大概12种类型转换的操作，如下：**
+
+<img src="README.assets/image-20230419153200800.png" alt="image-20230419153200800" style="zoom:50%;" />
+
+**描述**：在案例工程下创建 interfaces.assembler 包，定义 IAssembler<SOURCE, TARGET>#sourceToTarget(SOURCE var) 接口，提供不同方式的对象转换操作类实现，学习的过程中可以直接下载运行调试。
+
+`MapStruct` 更好用，因为它本身就是在编译期生成`get、set`代码，性能也更好。
+
+### 14.3 功能开发
+
+- lottery-interfaces 是对 lottery-rpc 接口定义的具体实现，在 rpc 接口定义层还会定义出 DTO、REQ、RES 对象
+- lottery-interfaces 包括 facade 门面接口、assembler 对象转换操作
+
+#### 14.3.1 接口包装
+
+ ```java
+  @Controller
+  public class LotteryActivityBooth implements ILotteryActivityBooth {
+  
+      private Logger logger = LoggerFactory.getLogger(LotteryActivityBooth.class);
+  
+      @Resource
+      private IActivityProcess activityProcess;
+  
+      @Resource
+      private IMapping<DrawAwardVO, AwardDTO> awardMapping;
+  
+      @Override
+      public DrawRes doDraw(DrawReq drawReq) {
+          try {
+              logger.info("抽奖，开始 uId：{} activityId：{}", drawReq.getuId(), drawReq.getActivityId());
+  
+              // 1. 执行抽奖
+              DrawProcessResult drawProcessResult = activityProcess.doDrawProcess(new DrawProcessReq(drawReq.getuId(), drawReq.getActivityId()));
+              if (!Constants.ResponseCode.SUCCESS.getCode().equals(drawProcessResult.getCode())) {
+                  logger.error("抽奖，失败(抽奖过程异常) uId：{} activityId：{}", drawReq.getuId(), drawReq.getActivityId());
+                  return new DrawRes(drawProcessResult.getCode(), drawProcessResult.getInfo());
+              }
+  
+              // 2. 数据转换
+              DrawAwardVO drawAwardVO = drawProcessResult.getDrawAwardVO();
+              AwardDTO awardDTO = awardMapping.sourceToTarget(drawAwardVO);
+              awardDTO.setActivityId(drawReq.getActivityId());
+  
+              // 3. 封装数据
+              DrawRes drawRes = new DrawRes(Constants.ResponseCode.SUCCESS.getCode(), Constants.ResponseCode.SUCCESS.getInfo());
+              drawRes.setAwardDTO(awardDTO);
+  
+              logger.info("抽奖，完成 uId：{} activityId：{} drawRes：{}", drawReq.getuId(), drawReq.getActivityId(), JSON.toJSONString(drawRes));
+  
+              return drawRes;
+          } catch (Exception e) {
+              logger.error("抽奖，失败 uId：{} activityId：{} reqJson：{}", drawReq.getuId(), drawReq.getActivityId(), JSON.toJSONString(drawReq), e);
+              return new DrawRes(Constants.ResponseCode.UN_ERROR.getCode(), Constants.ResponseCode.UN_ERROR.getInfo());
+          }
+      }
+  
+      @Override
+      public DrawRes doQuantificationDraw(QuantificationDrawReq quantificationDrawReq) {
+          try {
+              logger.info("量化人群抽奖，开始 uId：{} treeId：{}", quantificationDrawReq.getuId(), quantificationDrawReq.getTreeId());
+  
+              // 1. 执行规则引擎，获取用户可以参与的活动号
+              RuleQuantificationCrowdResult ruleQuantificationCrowdResult = activityProcess.doRuleQuantificationCrowd(new DecisionMatterReq(quantificationDrawReq.getuId(), quantificationDrawReq.getTreeId(), quantificationDrawReq.getValMap()));
+              if (!Constants.ResponseCode.SUCCESS.getCode().equals(ruleQuantificationCrowdResult.getCode())) {
+                  logger.error("量化人群抽奖，失败(规则引擎执行异常) uId：{} treeId：{}", quantificationDrawReq.getuId(), quantificationDrawReq.getTreeId());
+                  return new DrawRes(ruleQuantificationCrowdResult.getCode(), ruleQuantificationCrowdResult.getInfo());
+              }
+  
+              // 2. 执行抽奖
+              Long activityId = ruleQuantificationCrowdResult.getActivityId();
+              DrawProcessResult drawProcessResult = activityProcess.doDrawProcess(new DrawProcessReq(quantificationDrawReq.getuId(), activityId));
+              if (!Constants.ResponseCode.SUCCESS.getCode().equals(drawProcessResult.getCode())) {
+                  logger.error("量化人群抽奖，失败(抽奖过程异常) uId：{} treeId：{}", quantificationDrawReq.getuId(), quantificationDrawReq.getTreeId());
+                  return new DrawRes(drawProcessResult.getCode(), drawProcessResult.getInfo());
+              }
+  
+              // 3. 数据转换
+              DrawAwardVO drawAwardVO = drawProcessResult.getDrawAwardVO();
+              AwardDTO awardDTO = awardMapping.sourceToTarget(drawAwardVO);
+              awardDTO.setActivityId(activityId);
+  
+              // 4. 封装数据
+              DrawRes drawRes = new DrawRes(Constants.ResponseCode.SUCCESS.getCode(), Constants.ResponseCode.SUCCESS.getInfo());
+              drawRes.setAwardDTO(awardDTO);
+  
+              logger.info("量化人群抽奖，完成 uId：{} treeId：{} drawRes：{}", quantificationDrawReq.getuId(), quantificationDrawReq.getTreeId(), JSON.toJSONString(drawRes));
+  
+              return drawRes;
+          } catch (Exception e) {
+              logger.error("量化人群抽奖，失败 uId：{} treeId：{} reqJson：{}", quantificationDrawReq.getuId(), quantificationDrawReq.getTreeId(), JSON.toJSONString(quantificationDrawReq), e);
+              return new DrawRes(Constants.ResponseCode.UN_ERROR.getCode(), Constants.ResponseCode.UN_ERROR.getInfo());
+          }
+      }
+  
+  }
+ ```
+
+- 在抽奖活动展台的类中主要实现了两个接口方法，指定活动抽奖(doDraw)、量化人群抽奖(doQuantificationDraw)
+
+#### 14.3.2 对象转化
+
+```java
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE, unmappedSourcePolicy = ReportingPolicy.IGNORE)
+public interface AwardMapping extends IMapping<DrawAwardVO, AwardDTO> {
+
+    @Mapping(target = "userId", source = "uId")
+    @Override
+    AwardDTO sourceToTarget(DrawAwardVO var1);
+
+    @Override
+    DrawAwardVO targetToSource(AwardDTO var1);
+
+}
+```
+
+- 定义接口 AwardMapping 继承 IMapping<DrawAwardVO, AwardDTO> 做对象转换操作
+- 如果一些接口字段在两个对象间不是同名的，则需要进行配置，就像 uId -> userId
+
+
+
+### 13.4 测试验证
+
+**普通抽奖**
+
+```java
+@Test
+    public void test_doDraw() {
+        DrawReq drawReq = new DrawReq();
+        drawReq.setUId("admin");
+        drawReq.setActivityId(100001L);
+        DrawRes drawRes = lotteryActivityBooth.doDraw(drawReq);
+        log.info("请求参数：{}", JSON.toJSONString(drawReq));
+        log.info("测试结果：{}", JSON.toJSONString(drawRes));
+    }
+```
+
+![image-20230419200131445](README.assets/image-20230419200131445.png)
+
+**量化抽奖**
+
+![image-20230419200502437](README.assets/image-20230419200502437.png)
 

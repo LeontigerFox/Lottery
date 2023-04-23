@@ -1,13 +1,11 @@
 package com.banana69.lotteryERP.com.banana69;
 
-import com.banana69.lotteryERP.interfaces.sys.entity.User;
-import com.banana69.lotteryERP.utils.JwtUtil;
+import com.banana69.lotteryERP.interfaces.sys.entity.SysUser;
+import com.banana69.lotteryERP.interfaces.sys.utils.JwtUtil;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import javax.annotation.Resource;
 
 /**
  * Created with IntelliJ IDEA.
@@ -24,11 +22,11 @@ public class JwtUtilTest {
 
     @Test
     public void testCreateJwt(){
-        User user = new User();
-        user.setPassword("admin");
-        user.setPassword("admin");
+        SysUser sysUser = new SysUser();
+        sysUser.setPassword("admin");
+        sysUser.setPassword("admin");
 
-        String token = jwtUtil.createToken(user);
+        String token = jwtUtil.createToken(sysUser);
 
         System.out.println(token);
     }
@@ -37,9 +35,9 @@ public class JwtUtilTest {
     public  void testParseJwt() {
         String token = "eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiI5ZTVlYmVhNy02ZjQyLTQ4NGYtOGRiMy03JjhiYmE5NDE1ZDkiLCJzdWIiOiJ7XCJwYXNzd29yZFwiOlwiYWRtaW5cIn0iLCJpc3MiOiJzeXN0ZW0iLCJpYXQiOjE2ODE3Mzc4NDQsImV4cCI6MTY4MTczOTY0NH0.Sw6Z4B1a6i2vYNuhlSdQbAS9mCQiCG4-oc0n5s8Ryks";
         Claims claims = jwtUtil.parseToken(token);
-        User user = jwtUtil.parseToken(token, User.class);
+        SysUser sysUser = jwtUtil.parseToken(token, SysUser.class);
         System.out.println(claims);
-        System.out.println(user);
+        System.out.println(sysUser);
     }
 
 
