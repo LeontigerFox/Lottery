@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.banana69.lottery.infrastructure.dao.IActivityDao">
+
+    <resultMap id="activityMap" type="com.banana69.lottery.infrastructure.po.Activity">
+        <id column="id" property="id"/>
+        <result column="activity_id" property="activityId"/>
+        <result column="activity_name" property="activityName"/>
+        <result column="activity_desc" property="activityDesc"/>
+        <result column="begin_date_time" property="beginDateTime"/>
+        <result column="end_date_time" property="endDateTime"/>
+        <result column="stock_count" property="stockCount"/>
+        <result column="stock_surplus_count" property="stockSurplusCount"/>
+        <result column="take_count" property="takeCount"/>
+        <result column="strategy_id" property="strategyId"/>
+        <result column="state" property="state"/>
+        <result column="creator" property="creator"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <update id="subtractionActivityStock" parameterType="java.lang.Long">
+        UPDATE activity SET stock_surplus_count = stock_surplus_count - 1
+        WHERE activity_id = #{activityId} AND stock_surplus_count > 0
+    </update>
+
+
+    <select id="queryActivityById" parameterType="java.lang.Long" resultMap="activityMap">
+        SELECT activity_id, activity_name, activity_desc, begin_date_time, end_date_time,
+               stock_count, stock_surplus_count, take_count, strategy_id, state, creator, create_time, update_time
+        FROM activity
+        WHERE activity_id = #{activityId}
+    </select>
+
+</mapper>

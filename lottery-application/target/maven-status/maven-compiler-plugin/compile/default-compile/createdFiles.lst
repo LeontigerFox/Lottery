@@ -1,0 +1,5 @@
+com/banana69/lottery/application/process/res/DrawProcessResult.class
+com/banana69/lottery/application/process/req/DrawProcessReq.class
+com/banana69/lottery/application/process/IActivityProcess.class
+com/banana69/lottery/application/process/res/RuleQuantificationCrowdResult.class
+com/banana69/lottery/application/process/impl/ActivityProcessImpl.class

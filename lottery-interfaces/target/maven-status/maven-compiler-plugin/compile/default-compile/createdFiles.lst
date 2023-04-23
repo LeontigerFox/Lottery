@@ -1,0 +1,7 @@
+com/banana69/lottery/interfaces/assembler/IMapping.class
+com/banana69/lottery/interfaces/facde/LotteryActivityBooth.class
+com/banana69/lottery/interfaces/assembler/AwardMapping.class
+com/banana69/lottery/mybatisPlusConfig/MyMetaObjectHandler.class
+com/banana69/lottery/mybatisPlusConfig/MyConfiguration.class
+com/banana69/lottery/interfaces/assembler/AwardMappingImpl.class
+com/banana69/lottery/LotteryApplication.class

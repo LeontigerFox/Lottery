@@ -1,0 +1,5 @@
+com/banana69/lottery/rpc/req/DrawReq.class
+com/banana69/lottery/rpc/dto/AwardDTO.class
+com/banana69/lottery/rpc/req/QuantificationDrawReq.class
+com/banana69/lottery/rpc/res/DrawRes.class
+com/banana69/lottery/rpc/ILotteryActivityBooth.class

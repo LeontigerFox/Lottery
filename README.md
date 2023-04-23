@@ -243,23 +243,27 @@ scan，相当于 Spring 中自动扫描包的地址，可以把此包下的所�
 
 使用zookeeper作为注册中心，该项目中zookeeper使用docker搭建，版本为3.4.13
 
+```bash
+docker run -d --name zookeeper --restart always -p 2181:2181 -p 2888:2888 -p 3888:3888 -v /Users/null/Daily/docker/zookeeper/conf/zoo.cfg:/conf/zoo.cfg -v /Users/null/Daily/docker/zookeeper/data:/data -v /Users/null/Daily/docker/zookeeper/log:/datalog  zookeeper:3.4.13
+```
+
 搭建dubbo-admin，在github下载，选择0.4.0版本
 
 在 dubbo-admin中执行命令
 
-```
+```bash
 mvn clean package -Dmaven.test.skip=true
 ```
 
 执行完命令后切换到目录
 
-```
+```bash
 dubbo-admin-develop/dubbo-admin-distribution/target>
 ```
 
 执行：
 
-```
+```bash
 java -jar ./dubbo-admin-0.4.0.jar
 ```
 
@@ -267,7 +271,7 @@ java -jar ./dubbo-admin-0.4.0.jar
 
 dubbo-admin-ui 目录下执行命令
 
-```
+```bash
 npm run dev
 ```
 
@@ -3106,7 +3110,7 @@ public interface AwardMapping extends IMapping<DrawAwardVO, AwardDTO> {
 
 
 
-### 13.4 测试验证
+### 14.4 测试验证
 
 **普通抽奖**
 
@@ -3128,3 +3132,209 @@ public interface AwardMapping extends IMapping<DrawAwardVO, AwardDTO> {
 
 ![image-20230419200502437](README.assets/image-20230419200502437.png)
 
+
+
+## 15. 搭建MQ消息组件Kafka服务环境
+
+描述：搭建MQ消息组件Kafka服务环境，并整合到SpringBoot中，完成消息的生产和消费处理
+
+### 15.1 Kafka 安装与配置
+
+Apache Kafka是一个分布式发布 - 订阅消息系统和一个强大的队列，可以处理大量的数据，并使您能够将消息从一个端点传递到另一个端点。 Kafka适合离线和在线消息消费。 Kafka消息保留在磁盘上，并在群集内复制以防止数据丢失。 Kafka构建在ZooKeeper同步服务之上。 它与Apache Storm和Spark非常好地集成，用于实时流式数据分析。
+
+**使用docker安装 kakfa**
+
+```bash
+docker pull wurstmeister/kafka
+
+docker run -d --name kafka -p 9092:9092 -e KAFKA_BROKER_ID=0 -e KAFKA_ZOOKEEPER_CONNECT=docker.for.mac.host.internal:2181/kafka -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://docker.for.mac.host.internal:9092 -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092 wurstmeister/kafka
+
+
+
+
+# 测试 
+docker exec -it kafka bash
+cd /opt/kafka/bin
+# 运行kafka生产者
+./kafka-console-producer.sh --broker-list 127.0.0.1:9092 --topic first-topic
+# 出现>之后发送Hello
+>Hello
+# 打开新终端，启动kafka消费者
+cd /opt/kafka/bin
+./kafka-console-consumer.sh --bootstrap-server 127.0.0.1:9092 --topic first-topic --from-beginning
+
+```
+
+- KAFKA_BROKER_ID=0 在kafka集群中，每个kafka都有一个BROKER_ID来区分自己
+- KAFKA_ZOOKEEPER_CONNECT={host-ip}:{zookeeper-port}/kafka 配置zookeeper管理kafka的路径
+- KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://{host-ip}:9092 把kafka的地址端口注册给zookeeper
+- KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092 kafka监听地址
+
+mac 环境，在`/etc/hosts`设置`docker.for.mac.host.internal`
+
+### 15.2 SpringBoot 整合 Kafka
+
+```
+<dependency>
+    <groupId>org.springframework.kafka</groupId>
+    <artifactId>spring-kafka</artifactId>
+</dependency>
+```
+
+`application.yml`
+
+```yml
+spring:
+  kafka:
+    bootstrap-servers: 127.0.0.1:9092
+    producer:
+      # 发生错误后，消息重发的次数。
+      retries: 1
+      #当有多个消息需要被发送到同一个分区时，生产者会把它们放在同一个批次里。该参数指定了一个批次可以使用的内存大小，按照字节数计算。
+      batch-size: 16384
+      # 设置生产者内存缓冲区的大小。
+      buffer-memory: 33554432
+      # 键的序列化方式
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # 值的序列化方式
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # acks=0 ： 生产者在成功写入消息之前不会等待任何来自服务器的响应。
+      # acks=1 ： 只要集群的首领节点收到消息，生产者就会收到一个来自服务器成功响应。
+      # acks=all ：只有当所有参与复制的节点全部收到消息时，生产者才会收到一个来自服务器的成功响应。
+      acks: 1
+    consumer:
+      # 自动提交的时间间隔 在spring boot 2.X 版本中这里采用的是值的类型为Duration 需要符合特定的格式，如1S,1M,2H,5D
+      auto-commit-interval: 1S
+      # 该属性指定了消费者在读取一个没有偏移量的分区或者偏移量无效的情况下该作何处理：
+      # latest（默认值）在偏移量无效的情况下，消费者将从最新的记录开始读取数据（在消费者启动之后生成的记录）
+      # earliest ：在偏移量无效的情况下，消费者将从起始位置读取分区的记录
+      auto-offset-reset: earliest
+      # 是否自动提交偏移量，默认值是true,为了避免出现重复数据和数据丢失，可以把它设置为false,然后手动提交偏移量
+      enable-auto-commit: false
+      # 键的反序列化方式
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # 值的反序列化方式
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      # 在侦听器容器中运行的线程数。
+      concurrency: 5
+      #listner负责ack，每调用一次，就立即commit
+      ack-mode: manual_immediate
+      missing-topics-fatal: false
+
+```
+
+**生产者**
+
+```java
+@Component
+public class KafkaProducer {
+
+    private Logger logger = LoggerFactory.getLogger(KafkaProducer.class);
+
+    @Resource
+    private KafkaTemplate<String, Object> kafkaTemplate;
+
+    public static final String TOPIC_TEST = "Hello-Kafka";
+
+    public static final String TOPIC_GROUP = "test-consumer-group";
+
+    public void send(Object obj) {
+        String obj2String = JSON.toJSONString(obj);
+        logger.info("准备发送消息为：{}", obj2String);
+
+        // 发送消息
+        ListenableFuture<SendResult<String, Object>> future = kafkaTemplate.send(TOPIC_TEST, obj);
+        future.addCallback(new ListenableFutureCallback<SendResult<String, Object>>() {
+            @Override
+            public void onFailure(Throwable throwable) {
+                //发送失败的处理
+                logger.info(TOPIC_TEST + " - 生产者 发送消息失败：" + throwable.getMessage());
+            }
+
+            @Override
+            public void onSuccess(SendResult<String, Object> stringObjectSendResult) {
+                //成功的处理
+                logger.info(TOPIC_TEST + " - 生产者 发送消息成功：" + stringObjectSendResult.toString());
+            }
+        });
+    }
+
+}
+```
+
+**消费者**
+
+```java
+@Component
+public class KafkaConsumer {
+
+    private Logger logger = LoggerFactory.getLogger(KafkaConsumer.class);
+
+    @KafkaListener(topics = KafkaProducer.TOPIC_TEST, groupId = KafkaProducer.TOPIC_GROUP)
+    public void topicTest(ConsumerRecord<?, ?> record, Acknowledgment ack, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        Optional<?> message = Optional.ofNullable(record.value());
+        if (message.isPresent()) {
+            Object msg = message.get();
+            logger.info("topic_test 消费了： Topic:" + topic + ",Message:" + msg);
+            ack.acknowledge();
+        }
+    }
+
+}
+```
+
+### 15.3 测试验证
+
+测试之前需要开启 Kafka 和Zookeeper服务
+
+```java
+@SpringBootTest
+@Slf4j
+@RunWith(SpringRunner.class)
+public class KafkaProducerTest {
+    @Resource
+    private KafkaProducer kafkaProducer;
+    
+    @Test
+    public void test_send() throws InterruptedException {
+        // 循环发送消息
+       for(int i = 0; i < 5; i++) {
+            kafkaProducer.send("你好，我是Lottery --001");
+            Thread.sleep(3500);
+        }
+    }
+}
+```
+
+![image-20230423153639597](README.assets/image-20230423153639597.png)
+
+
+
+## 16. 使用MQ解藕抽奖发货流程
+
+描述：使用MQ消息的特性，把用户抽奖到发货到流程进行解耦。这个过程中包括了消息的发送、库表中状态的更新、消息的接收消费、发奖状态的处理等。
+
+
+
+### 16.1 开发日志
+
+- 在数据库表 `user_strategy_export` 添加字段 `mq_state` 这个字段用于发送 MQ 成功更新库表状态，如果 MQ 消息发送失败则需要通过定时任务补偿 MQ 消息。
+- 启动 kafka 新增 topic：lottery_invoice 用于发货单消息，当抽奖完成后则发送一个发货单，再异步处理发货流程，这个部分就是MQ的解耦流程使用。
+- 在 `ActivityProcessImpl#doDrawProcess` 活动抽奖流程编排中补全用户抽奖后，发送MQ触达异步奖品发送的流程。
+
+
+
+### 16.2 Kafka 创建主 topic
+
+![image-20230423164009655](README.assets/image-20230423164009655.png)
+
+`./kafka-topics.sh --create --zookeeper docker.for.mac.host.internal:2181/kafka --replication-factor 1 --partitions 1 --topic lottery_invoice`
+
+
+
+### 16.3流程说明
+
+**MQ流程**
+
+<img src="README.assets/image-20230423164122783.png" alt="image-20230423164122783" style="zoom:50%;" />

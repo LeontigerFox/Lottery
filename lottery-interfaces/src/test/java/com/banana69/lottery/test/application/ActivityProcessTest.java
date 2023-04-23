@@ -32,7 +32,7 @@ public class ActivityProcessTest {
     @Test
     public void test_doDrawProcess() {
         DrawProcessReq req = new DrawProcessReq();
-        req.setuId("test_uid");
+        req.setuId("admin");
         req.setActivityId(100001L);
         int i = 0;
         while(i < 3)

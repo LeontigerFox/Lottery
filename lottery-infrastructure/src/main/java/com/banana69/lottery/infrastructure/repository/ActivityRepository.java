@@ -99,7 +99,8 @@ public class ActivityRepository implements IActivityRepository {
         userTakeActivityCountReq.setuId(req.getuId());
         userTakeActivityCountReq.setActivityId(req.getActivityId());
         UserTakeActivityCount userTakeActivityCount = userTakeActivityCountDao.queryUserTakeActivityCount(userTakeActivityCountReq);
-
+        // TODO
+        //System.out.println(userTakeActivityCount);
 
 
         // 封装结果信息
