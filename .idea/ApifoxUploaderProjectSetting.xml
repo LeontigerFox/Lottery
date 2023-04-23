@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ApifoxUploaderProjectSetting">
-    <option name="apifoxAccessToken" value="APS-6ZK44NgBkc8pg3A78H1ipwp6H6F3wdAQ" />
+    <option name="apifoxAccessToken" value="" />
     <option name="apifoxApiOverwriteMode" value="覆盖所有字段" />
     <option name="apifoxProjectIds">
       <array>
