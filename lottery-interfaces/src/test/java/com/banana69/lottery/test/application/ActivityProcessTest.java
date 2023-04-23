@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.banana69.lottery.application.process.IActivityProcess;
 import com.banana69.lottery.application.process.req.DrawProcessReq;
 import com.banana69.lottery.application.process.res.DrawProcessResult;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,7 +24,6 @@ import javax.annotation.Resource;
 @SpringBootTest
 
 public class ActivityProcessTest {
-
     @Resource
     private IActivityProcess activityProcess;
 
@@ -34,14 +32,8 @@ public class ActivityProcessTest {
         DrawProcessReq req = new DrawProcessReq();
         req.setuId("admin");
         req.setActivityId(100001L);
-        int i = 0;
-        while(i < 3)
-        {
-            DrawProcessResult drawProcessResult = activityProcess.doDrawProcess(req);
-            log.info("请求入参：{}", JSON.toJSONString(req));
-            log.info("测试结果：{}", JSON.toJSONString(drawProcessResult));
-            i++;
-        }
+        DrawProcessResult drawProcessResult = activityProcess.doDrawProcess(req);
+        log.info("请求入参：{}", JSON.toJSONString(req));
+        log.info("测试结果：{}", JSON.toJSONString(drawProcessResult));
     }
-
 }

@@ -42,7 +42,7 @@ public class ActivityPartakeImpl extends BaseActivityPartake {
 
     @Override
     protected UserTakeActivityVO queryNoConsumedTakeActivityOrder(Long activityId, String uId) {
-        return null;
+        return userTakeActivityRepository.queryNoConsumedTakeActivityOrder(activityId, uId);
     }
 
     @Override
@@ -139,12 +139,17 @@ public class ActivityPartakeImpl extends BaseActivityPartake {
                    status.setRollbackOnly();
                    log.error("记录中奖单，唯一索引冲突 activityId：{} uId：{}", drawOrder.getActivityId(), drawOrder.getuId(), e);
                    return Result.buildResult(Constants.ResponseCode.INDEX_DUP);
-
                }
                return Result.buildSuccessResult();
             });
         }finally {
             dbRouter.clear();
         }
+    }
+
+    @Override
+    public void updateInvoiceMqState(String uId, Long orderId, Integer mqState) {
+        userTakeActivityRepository.updateInvoiceMqState(uId, orderId, mqState);
+
     }
 }

@@ -32,4 +32,13 @@ public interface IUserStrategyExportDao extends BaseMapper<UserStrategyExport> {
     @DBRouter
     UserStrategyExport queryUserStrategyExportByUId(String uId);
 
+    /**
+     * 更新发送MQ状态
+     * @param userStrategyExport
+     */
+    @DBRouter
+    void updateUserAwardState(UserStrategyExport userStrategyExport);
+
+    @DBRouter
+    void updateInvoiceMqState(UserStrategyExport userStrategyExport);
 }

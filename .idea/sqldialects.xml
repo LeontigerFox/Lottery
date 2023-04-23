@@ -13,5 +13,8 @@
     <file url="file://$PROJECT_DIR$/sql/14-sql/lottery.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/sql/14-sql/lottery_01.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/sql/14-sql/lottery_02.sql" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/sql/16-sql/lottery.sql" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/sql/16-sql/lottery_01.sql" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/sql/16-sql/lottery_02.sql" dialect="MySQL" />
   </component>
 </project>

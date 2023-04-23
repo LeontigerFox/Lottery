@@ -79,6 +79,7 @@ mybatis-plus:
   mapper-locations: classpath:/mybatis/mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
 #    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 dubbo:
@@ -96,3 +97,16 @@ dubbo:
     port: 20881
   scan:
     base-packages: com.banana69.lottery.rpc
+
+
+logging:
+
+  level:
+    com:
+      baomidou:
+        mybatisplus: DEBUG
+      banana69:
+        lottery:
+          infrastructure:
+            dao: DEBUG
+  config: classpath:logConfig/logback-springboot.xml

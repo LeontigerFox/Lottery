@@ -22,14 +22,6 @@ public class UserTakeActivityCount {
      */
     private Long id;
 
-    public String getuId() {
-        return uId;
-    }
-
-    public void setuId(String uId) {
-        this.uId = uId;
-    }
-
     /**
      * 用户ID
      */
@@ -54,5 +46,13 @@ public class UserTakeActivityCount {
      * 更新时间
      */
     private Date updateTime;
+    public String getuId() {
+        return uId;
+    }
+
+    public void setuId(String uId) {
+        this.uId = uId;
+    }
+
 
 }

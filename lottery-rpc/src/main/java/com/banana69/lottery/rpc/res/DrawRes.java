@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
  * @date: 2023/4/19/16:18
  * @description:  抽奖结果
  */
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class DrawRes extends Result implements Serializable{
@@ -26,5 +25,11 @@ public class DrawRes extends Result implements Serializable{
         super(code, info);
     }
 
+    public AwardDTO getAwardDTO() {
+        return awardDTO;
+    }
 
+    public void setAwardDTO(AwardDTO awardDTO) {
+        this.awardDTO = awardDTO;
+    }
 }
