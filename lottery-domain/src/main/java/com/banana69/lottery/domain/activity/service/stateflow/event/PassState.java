@@ -48,8 +48,9 @@ public class PassState extends AbstractState {
 
     @Override
     public Result doing(Long activityId, Enum<Constants.ActivityState> currentState) {
+        System.out.println("activityId:"+activityId+" currentState:"+currentState);
         boolean isSuccess = activityRepository.alterStatus(activityId, currentState, Constants.ActivityState.DOING);
-        return isSuccess ? Result.buildResult(Constants.ResponseCode.SUCCESS, "活动变更活动中完成") : Result.buildErrorResult("活动状态变更失败");
+        return isSuccess ? Result.buildResult(Constants.ResponseCode.SUCCESS, "活动状态变更为活动中完成") : Result.buildErrorResult("活动状态变更失败");
     }
 
 }

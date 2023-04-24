@@ -100,7 +100,6 @@ dubbo:
 
 
 logging:
-
   level:
     com:
       baomidou:
@@ -110,3 +109,20 @@ logging:
           infrastructure:
             dao: DEBUG
   config: classpath:logConfig/logback-springboot.xml
+
+
+xxl:
+  job:
+    admin:
+      addresses: http://127.0.0.1:7789/xxl-job-admin
+    executor:
+      address:
+      appname: lottery-job
+      ip:
+      port: 9998
+      logpath: applogs/xxl-job/lotteryJobHandler
+      logretentiondays: 50
+    accessToken: default_token
+
+
+

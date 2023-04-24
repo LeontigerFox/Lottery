@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.List;
@@ -34,6 +35,7 @@ public class ActivityDeployImpl implements IActivityDeploy {
 
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void createActivity(ActivityConfigReq req) {
         logger.info("创建活动配置开始，activityId：{}", req.getActivityId());
         ActivityConfigRich activityConfigRich = req.getActivityConfigRich();
@@ -69,6 +71,11 @@ public class ActivityDeployImpl implements IActivityDeploy {
     @Override
     public void updateActivity(ActivityConfigReq req) {
         // TODO: 非核心功能后续补充
+    }
+
+    @Override
+    public List<ActivityVO> scanToDoActivityList(Long id) {
+        return activityRepository.scanToDoActivityList(id);
     }
 
 }

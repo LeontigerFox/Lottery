@@ -18,6 +18,11 @@ import java.util.Date;
 @AllArgsConstructor
 public class ActivityVO {
     /**
+     * 自增ID
+     */
+    private Long id;
+
+    /**
      * 活动ID
      */
     private Long activityId;

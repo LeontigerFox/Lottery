@@ -7,23 +7,29 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="lottery-erp" />
+        <module name="xxl-job-core" />
         <module name="db-router-spring-boot-starter" />
+        <module name="lottery-erp" />
         <module name="lottery-infrastructure" />
         <module name="lottery-common" />
         <module name="lottery-domain" />
+        <module name="xxl-job-executor-sample-frameless" />
         <module name="lottery-application" />
         <module name="lottery-rpc" />
         <module name="lottery-interfaces" />
+        <module name="xxl-job-executor-sample-springboot" />
+        <module name="xxl-job-admin" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="Lottery-ERP" target="1.8" />
       <module name="lottery-Test" target="1.8" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="Lottery" options="-parameters" />
+      <module name="Lottery-ERP" options="-parameters" />
       <module name="db-router-spring-boot-starter" options="-parameters" />
       <module name="lottery-Test" options="-parameters" />
       <module name="lottery-application" options="-parameters" />

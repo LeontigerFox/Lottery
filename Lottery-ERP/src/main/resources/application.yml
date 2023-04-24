@@ -7,11 +7,29 @@ spring:
     view:
       prefix: /
       suffix: .html
+
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password: root
-    url: jdbc:mysql://127.0.0.1:3306/lottery_security?characterEncoding=utf-8&serverTimezone=UTC
+    dynamic:
+      primary: lotteryERP
+      strict: false
+      datasource:
+        lotteryERP:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          username: root
+          password: root
+          url: jdbc:mysql://127.0.0.1:3306/lottery_security?characterEncoding=utf-8&serverTimezone=UTC
+        lottery:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          username: root
+          password: root
+          url: jdbc:mysql://127.0.0.1:3306/lottery?characterEncoding=utf-8&serverTimezone=UTC
+
+
+
+
+
+
+
 #    url: jdbc:mysql://127.0.0.1:3306/lottery_user_login?useSSL=false&serverTimezone=UTC
 
 
@@ -35,6 +53,19 @@ mybatis-plus:
     auto-mapping-behavior: full
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.banana69.lotteryERP.interfaces.lottery.dto, com.banana69.lotteryERP.interfaces.sys.entity
 
+dubbo:
+  application:
+    name: Lottery-ERP
+    version: 1.0.0
+  registry:
+    #    address: N/A
+    #    address: #multicast://224.5.6.7:1234
+    address: zookeeper://127.0.0.1:2181
+#    address: nacos://127.0.0.1:8848
+  protocol:
+    name: dubbo
+    port: -1
 
 
