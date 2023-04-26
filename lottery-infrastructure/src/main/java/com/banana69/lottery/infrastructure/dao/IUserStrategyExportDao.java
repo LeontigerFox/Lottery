@@ -6,6 +6,8 @@ import com.banana69.lottery.infrastructure.po.UserStrategyExport;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
+import java.util.List;
+
 /**
  * Created with IntelliJ IDEA.
  *
@@ -41,4 +43,11 @@ public interface IUserStrategyExportDao extends BaseMapper<UserStrategyExport> {
 
     @DBRouter
     void updateInvoiceMqState(UserStrategyExport userStrategyExport);
+
+    /**
+     * 扫描发货单 MQ 状态，把未发送 MQ 的单子扫描出来，做补偿
+     *
+     * @return 发货单
+     */
+    List<UserStrategyExport> scanInvoiceMqState();
 }

@@ -4,6 +4,9 @@ import com.banana69.lottery.common.Result;
 import com.banana69.lottery.domain.activity.model.req.PartakeReq;
 import com.banana69.lottery.domain.activity.model.res.PartakeResult;
 import com.banana69.lottery.domain.activity.model.vo.DrawOrderVO;
+import com.banana69.lottery.domain.activity.model.vo.InvoiceVO;
+
+import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
@@ -37,6 +40,10 @@ public interface IActivityPartake {
     void updateInvoiceMqState(String uId, Long orderId, Integer mqState);
 
 
-
-
+    /**
+     * 扫描发货单 MQ 状态，把未发送 MQ 的单子扫描出来，做补偿
+     *
+     * @return 发货单
+     */
+    List<InvoiceVO> scanInvoiceMqState(int dbCount, int i);
 }

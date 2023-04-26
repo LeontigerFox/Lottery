@@ -3,6 +3,17 @@
   <component name="LeetcodeEditor">
     <option name="projectConfig">
       <map>
+        <entry key="$USER_HOME$/java/leetcode-idea/leetcode/editor/cn/[1031]两个非重叠子数组的最大和.java">
+          <value>
+            <LeetcodeEditor>
+              <option name="contentPath" value="$USER_HOME$/java/leetcode-idea/leetcode/editor/cn/doc/content/[1031]两个非重叠子数组的最大和.md" />
+              <option name="frontendQuestionId" value="leetcode.cn1031" />
+              <option name="host" value="leetcode.cn" />
+              <option name="path" value="$USER_HOME$/java/leetcode-idea/leetcode/editor/cn/[1031]两个非重叠子数组的最大和.java" />
+              <option name="titleSlug" value="maximum-sum-of-two-non-overlapping-subarrays" />
+            </LeetcodeEditor>
+          </value>
+        </entry>
         <entry key="$USER_HOME$/java/leetcode-idea/leetcode/editor/cn/[剑指 Offer 38]字符串的排列.java">
           <value>
             <LeetcodeEditor>

@@ -1,9 +1,11 @@
 package com.banana69.lottery.domain.activity.respository;
 
 import com.banana69.lottery.domain.activity.model.vo.DrawOrderVO;
+import com.banana69.lottery.domain.activity.model.vo.InvoiceVO;
 import com.banana69.lottery.domain.activity.model.vo.UserTakeActivityVO;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
@@ -81,4 +83,5 @@ public interface IUserTakeActivityRepository {
     void updateInvoiceMqState(String uId, Long orderId, Integer mqState);
 
 
+    List<InvoiceVO> scanInvoiceMqState();
 }
